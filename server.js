@@ -176,6 +176,8 @@ const MIME_TYPES = {
   '.png': 'image/png',
 };
 
+const ALLOWED_TABLES = new Set(['businesses','customers','invoices','payments','expenses','appointments','tasks','timeLogs','emails','documents']);
+
 // API handler
 function handleAPI(req, res, pathname) {
   if (!db) {
@@ -183,14 +185,20 @@ function handleAPI(req, res, pathname) {
     res.end(JSON.stringify({ error: 'Database not initialized' }));
     return;
   }
-  
+
   try {
     const urlParts = pathname.split('/').filter(Boolean);
     const collection = urlParts[2]; // /api/db/{collection}
     const id = urlParts[3]; // /api/db/{collection}/{id}
-    
+
+    if (!ALLOWED_TABLES.has(collection)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid collection' }));
+      return;
+    }
+
     res.setHeader('Content-Type', 'application/json');
-    
+
     if (req.method === 'GET') {
       if (id) {
         const stmt = db.prepare(`SELECT * FROM ${collection} WHERE id = ?`);
@@ -215,11 +223,16 @@ function handleAPI(req, res, pathname) {
       let body = '';
       req.on('data', chunk => body += chunk);
       req.on('end', () => {
-        const data = JSON.parse(body);
+        let data;
+        try { data = JSON.parse(body); } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          return;
+        }
         const columns = Object.keys(data).join(', ');
         const placeholders = Object.keys(data).map(() => '?').join(', ');
-        const values = Object.values(data).map(v => typeof v === 'object' ? JSON.stringify(v) : v);
-        
+        const values = Object.values(data).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
+
         db.run(`INSERT INTO ${collection} (${columns}) VALUES (${placeholders})`, values);
         saveDatabase();
         res.end(JSON.stringify({ success: true, id: data.id }));
@@ -228,11 +241,16 @@ function handleAPI(req, res, pathname) {
       let body = '';
       req.on('data', chunk => body += chunk);
       req.on('end', () => {
-        const data = JSON.parse(body);
+        let data;
+        try { data = JSON.parse(body); } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          return;
+        }
         const updates = Object.keys(data).map(k => `${k} = ?`).join(', ');
-        const values = Object.values(data).map(v => typeof v === 'object' ? JSON.stringify(v) : v);
+        const values = Object.values(data).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
         values.push(id);
-        
+
         db.run(`UPDATE ${collection} SET ${updates} WHERE id = ?`, values);
         saveDatabase();
         res.end(JSON.stringify({ success: true }));
