@@ -192,18 +192,21 @@ function handleAPI(req, res, pathname) {
       if (id) {
         const stmt = db.prepare(`SELECT * FROM ${collection} WHERE id = ?`);
         stmt.bind([id]);
-        const result = stmt.getAsObject();
-        const row = result.length > 0 ? result[0] : null;
+        let row = null;
+        if (stmt.step()) row = stmt.getAsObject();
+        stmt.free();
         if (row && row.items) row.items = JSON.parse(row.items);
         res.end(JSON.stringify(row));
       } else {
         const stmt = db.prepare(`SELECT * FROM ${collection}`);
-        const result = stmt.getAsObject();
-        const parsedRows = result.map(row => {
+        const rows = [];
+        while (stmt.step()) {
+          const row = stmt.getAsObject();
           if (row.items) row.items = JSON.parse(row.items);
-          return row;
-        });
-        res.end(JSON.stringify(parsedRows));
+          rows.push(row);
+        }
+        stmt.free();
+        res.end(JSON.stringify(rows));
       }
     } else if (req.method === 'POST') {
       let body = '';
