@@ -190,4 +190,6 @@ function App() {
     ah(ToastHost, null));
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(ah(App, null));
+window.DBReady.then(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(ah(App, null));
+});

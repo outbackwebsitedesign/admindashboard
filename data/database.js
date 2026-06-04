@@ -88,8 +88,32 @@ const Database = {
 /* ---- Export to window ---- */
 window.Database = Database;
 
-// Load initial data from API
-async function loadInitialData() {
+const FMT = { fmtAUD, fmtK, fmtNum, fmtDate, fmtDateShort, fmtTime, relDays, daysFromToday, iso, addDays, MONTHS, DOW };
+
+// Set up window.DB synchronously so JSX scripts can reference it immediately
+window.DB = {
+  TODAY: new Date(),
+  businesses: [],
+  customers: [],
+  invoices: [],
+  payments: [],
+  expenses: [],
+  appointments: [],
+  tasks: [],
+  timeLogs: [],
+  emails: [],
+  documents: [],
+  series: { all: [] },
+  catBreakdown: () => [],
+  fmt: FMT,
+  biz: () => null,
+  cust: () => null,
+  byBiz: (arr, bizId) => bizId === 'all' ? arr : arr.filter(x => x.biz === bizId),
+  db: Database
+};
+
+// Load initial data from API, then update window.DB and signal ready
+window.DBReady = (async function loadInitialData() {
   try {
     const [businesses, customers, invoices, payments, expenses, appointments, tasks, timeLogs, emails, documents] = await Promise.all([
       Database.getAll('businesses'),
@@ -104,7 +128,7 @@ async function loadInitialData() {
       Database.getAll('documents')
     ]);
 
-    window.DB = {
+    Object.assign(window.DB, {
       TODAY: new Date(),
       businesses,
       customers,
@@ -122,35 +146,10 @@ async function loadInitialData() {
         expenses.filter(e => e.biz === biz).forEach(e => { map[e.cat] = (map[e.cat] || 0) + e.amount; });
         return Object.entries(map).map(([cat, amount]) => ({ cat, amount })).sort((a, b) => b.amount - a.amount);
       },
-      fmt: { fmtAUD, fmtK, fmtNum, fmtDate, fmtDateShort, fmtTime, relDays, daysFromToday, iso, addDays, MONTHS, DOW },
       biz: (id) => businesses.find(b => b.id === id),
       cust: (id) => customers.find(c => c.id === id),
-      byBiz: (arr, bizId) => bizId === 'all' ? arr : arr.filter(x => x.biz === bizId),
-      db: Database
-    };
+    });
   } catch (error) {
     console.error('Failed to load initial data:', error);
-    window.DB = {
-      TODAY: new Date(),
-      businesses: [],
-      customers: [],
-      invoices: [],
-      payments: [],
-      expenses: [],
-      appointments: [],
-      tasks: [],
-      timeLogs: [],
-      emails: [],
-      documents: [],
-      series: { all: [] },
-      catBreakdown: () => [],
-      fmt: { fmtAUD, fmtK, fmtNum, fmtDate, fmtDateShort, fmtTime, relDays, daysFromToday, iso, addDays, MONTHS, DOW },
-      biz: () => null,
-      cust: () => null,
-      byBiz: (arr, bizId) => bizId === 'all' ? arr : arr.filter(x => x.biz === bizId),
-      db: Database
-    };
   }
-}
-
-loadInitialData();
+})();
