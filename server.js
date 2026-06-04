@@ -171,6 +171,9 @@ const MIME_TYPES = {
   '.js': 'text/javascript',
   '.jsx': 'text/javascript',
   '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.png': 'image/png',
 };
 
 // API handler
