@@ -67,8 +67,9 @@ function IncomeView({ bizId, store }) {
   const DB = window.DB;
   // income = paid invoices + payments; show as ledger of income transactions
   let pays = DB.byBiz(store.payments, bizId).sort((a, b) => new Date(b.date) - new Date(a.date));
-  const series = DB.series[bizId === 'all' ? 'all' : bizId];
-  const total = (bizId === 'all' ? DB.businesses.reduce((s, b) => s + b.ytdIncome, 0) : DB.biz(bizId).ytdIncome);
+  const series = DB.series[bizId === 'all' ? 'all' : bizId] || [];
+  const biz = bizId === 'all' ? null : DB.biz(bizId);
+  const total = biz ? biz.ytdIncome : DB.businesses.reduce((s, b) => s + (b.ytdIncome || 0), 0);
   // income by customer
   const byCust = {};
   pays.forEach(p => { const c = DB.cust(p.cust); if (c) byCust[c.name] = (byCust[c.name] || 0) + p.amount; });
@@ -79,11 +80,11 @@ function IncomeView({ bizId, store }) {
     bh(BPageHead, { bizId, title: 'Income', sub: 'Revenue recognised across the financial year' }),
     bh('div', { className: 'grid g-4', style: { marginBottom: 16 } },
       bh(BStat, { label: 'Income · FY', icon: 'trendUp', iconColor: 'var(--brand)', value: BF.fmtNum(Math.round(total)), delta: '8.4%', deltaDir: 'up' }),
-      bh(BStat, { label: 'This month', icon: 'dollar', iconColor: 'var(--info)', value: BF.fmtNum(series[series.length - 1].income) }),
-      bh(BStat, { label: 'Avg / month', icon: 'book', iconColor: 'var(--purple)', value: BF.fmtNum(Math.round(series.reduce((s, x) => s + x.income, 0) / series.length)) }),
+      bh(BStat, { label: 'This month', icon: 'dollar', iconColor: 'var(--info)', value: BF.fmtNum(series.length ? series[series.length - 1].income : 0) }),
+      bh(BStat, { label: 'Avg / month', icon: 'book', iconColor: 'var(--purple)', value: BF.fmtNum(series.length ? Math.round(series.reduce((s, x) => s + x.income, 0) / series.length) : 0) }),
       bh(BStat, { label: 'Received (cleared)', icon: 'card', iconColor: 'var(--brand)', value: BF.fmtNum(Math.round(pays.reduce((s, p) => s + p.amount, 0))) })),
-    bh(BCard, { title: 'Income trend', sub: 'FY25–26', className: 'fade-up', style: { marginBottom: 16 } },
-      bh(BCashflow, { series, fmt: BF })),
+    series.length ? bh(BCard, { title: 'Income trend', sub: 'FY25–26', className: 'fade-up', style: { marginBottom: 16 } },
+      bh(BCashflow, { series, fmt: BF })) : null,
     bh('div', { className: 'split wide' },
       bh(BCard, { title: 'Income transactions', bodyClass: 'tight' },
         bh('div', { className: 'tbl-wrap' }, bh('table', { className: 'tbl' },
@@ -105,9 +106,10 @@ function IncomeView({ bizId, store }) {
    ============================================================ */
 function BookkeepingView({ bizId, store }) {
   const DB = window.DB;
-  const income = bizId === 'all' ? DB.businesses.reduce((s, b) => s + b.ytdIncome, 0) : DB.biz(bizId).ytdIncome;
-  const expense = bizId === 'all' ? DB.businesses.reduce((s, b) => s + b.ytdExpense, 0) : DB.biz(bizId).ytdExpense;
-  const cash = bizId === 'all' ? DB.businesses.reduce((s, b) => s + b.cash, 0) : DB.biz(bizId).cash;
+  const biz = bizId === 'all' ? null : DB.biz(bizId);
+  const income = biz ? biz.ytdIncome : DB.businesses.reduce((s, b) => s + (b.ytdIncome || 0), 0);
+  const expense = biz ? biz.ytdExpense : DB.businesses.reduce((s, b) => s + (b.ytdExpense || 0), 0);
+  const cash = biz ? biz.cash : DB.businesses.reduce((s, b) => s + (b.cash || 0), 0);
   const exp = DB.byBiz(DB.expenses, bizId);
   const unrec = exp.filter(e => e.status === 'unreconciled');
 
@@ -160,9 +162,10 @@ function BookkeepingView({ bizId, store }) {
 function ReportsView({ bizId, store }) {
   const DB = window.DB;
   const [report, setReport] = window.useState('pnl');
-  const income = bizId === 'all' ? DB.businesses.reduce((s, b) => s + b.ytdIncome, 0) : DB.biz(bizId).ytdIncome;
-  const expense = bizId === 'all' ? DB.businesses.reduce((s, b) => s + b.ytdExpense, 0) : DB.biz(bizId).ytdExpense;
-  const series = DB.series[bizId === 'all' ? 'all' : bizId];
+  const biz = bizId === 'all' ? null : DB.biz(bizId);
+  const income = biz ? biz.ytdIncome : DB.businesses.reduce((s, b) => s + (b.ytdIncome || 0), 0);
+  const expense = biz ? biz.ytdExpense : DB.businesses.reduce((s, b) => s + (b.ytdExpense || 0), 0);
+  const series = DB.series[bizId === 'all' ? 'all' : bizId] || [];
 
   const reports = [
     { id: 'pnl', name: 'Profit & Loss', icon: 'trendUp' },
@@ -241,7 +244,7 @@ function AgedReceivables({ bizId, store }) {
       bh('thead', null, bh('tr', null, bh('th', null, 'Invoice'), bh('th', null, 'Customer'), bh('th', null, 'Due'), bh('th', { className: 'r' }, 'Balance'), bh('th', null, 'Age'))),
       bh('tbody', null, open.sort((a, b) => new Date(a.due) - new Date(b.due)).map(i => { const c = DB.cust(i.cust); const d = -BF.daysFromToday(i.due);
         return bh('tr', { key: i.id },
-          bh('td', { className: 'id' }, i.id), bh('td', { className: 'strong' }, c.name),
+          bh('td', { className: 'id' }, i.id), bh('td', { className: 'strong' }, c ? c.name : '—'),
           bh('td', { className: 'muted' }, BF.fmtDateShort(i.due)),
           bh('td', { className: 'amt' }, bMoney(i.total - i.amountPaid, 2)),
           bh('td', null, d > 0 ? bh('span', { className: 'badge overdue', style: { fontSize: 10 } }, d + 'd') : bh('span', { className: 'badge done', style: { fontSize: 10 } }, 'current'))); })))));
