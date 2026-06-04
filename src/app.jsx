@@ -35,11 +35,12 @@ const TITLES = {
   email: 'Email', income: 'Income', expenses: 'Expenses', bookkeeping: 'Bookkeeping', reports: 'Reports', settings: 'Settings',
 };
 
-function nextInvoiceId(biz, invoices) {
-  const prefix = biz === 'nbs' ? 'NB-' : biz === 'bws' ? 'BW-' : biz === 'rfp' ? 'INV-' : 'INV-';
-  const nums = invoices.filter(i => i.biz === biz).map(i => parseInt(i.id.replace(/\D/g, ''), 10) || 0);
+function nextInvoiceId(bizId, invoices) {
+  const bizObj = ADB.biz(bizId);
+  const prefix = bizObj?.invoicePrefix || 'INV-';
+  const nums = invoices.filter(i => i.biz === bizId).map(i => parseInt(i.id.replace(/\D/g, ''), 10) || 0);
   const n = (Math.max(0, ...nums) + 1);
-  return prefix + (biz === 'nbs' ? String(n).padStart(4, '0') : n);
+  return prefix + n;
 }
 
 function App() {
@@ -67,7 +68,10 @@ function App() {
       const i = updated.find(x => x.id === id);
       await ADB.db.update('invoices', id, i);
       if (i) {
-        const payment = { id: 'PAY-' + (5200 + payments.length), biz: i.biz, invoice: i.id, cust: i.cust, date: AF.iso(ADB.TODAY), amount: i.total, method: 'stripe', fee: +(i.total * 0.0175 + 0.3).toFixed(2), status: 'settled' };
+        const bizObj = ADB.biz(i.biz);
+        const feeRate = bizObj?.stripeFeeRate ?? 0.0175;
+        const feeFlat = bizObj?.stripeFeeFlat ?? 0.30;
+        const payment = { id: 'PAY-' + (5200 + payments.length), biz: i.biz, invoice: i.id, cust: i.cust, date: AF.iso(ADB.TODAY), amount: i.total, method: 'stripe', fee: +(i.total * feeRate + feeFlat).toFixed(2), status: 'settled' };
         setPayments(p => [payment, ...p]);
         await ADB.db.add('payments', payment);
       }
@@ -75,9 +79,12 @@ function App() {
     addInvoice: async (biz, cust, items) => {
       const its = items.filter(x => x.desc).map(x => ({ desc: x.desc, qty: +x.qty || 0, unit: +x.unit || 0, amount: +((+x.qty || 0) * (+x.unit || 0)).toFixed(2) }));
       const subtotal = +its.reduce((s, x) => s + x.amount, 0).toFixed(2);
-      const gst = +(subtotal * 0.1).toFixed(2);
+      const bizObj = ADB.biz(biz);
+      const gstRate = bizObj?.gstRate ?? 0.1;
+      const paymentDays = bizObj?.paymentTermsDays ?? 14;
+      const gst = +(subtotal * gstRate).toFixed(2);
       const id = nextInvoiceId(biz, invoices);
-      const nv = { id, biz, cust, issued: AF.iso(ADB.TODAY), due: AF.iso(AF.addDays(ADB.TODAY, 14)), status: 'sent', items: its, subtotal, gst, total: +(subtotal + gst).toFixed(2), amountPaid: 0 };
+      const nv = { id, biz, cust, issued: AF.iso(ADB.TODAY), due: AF.iso(AF.addDays(ADB.TODAY, paymentDays)), status: 'sent', items: its, subtotal, gst, total: +(subtotal + gst).toFixed(2), amountPaid: 0 };
       setInvoices(inv => [nv, ...inv]);
       await ADB.db.add('invoices', nv);
     },
