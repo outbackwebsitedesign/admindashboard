@@ -112,13 +112,13 @@ function InvoicesView({ bizId, store, openInv, setOpenInv }) {
   const counts = { all: inv.length };
   ['draft', 'sent', 'overdue', 'partial', 'paid'].forEach(s => counts[s] = inv.filter(i => i.status === s).length);
   let rows = filter === 'all' ? inv : inv.filter(i => i.status === filter);
-  if (q) rows = rows.filter(i => { const c = DB.cust(i.cust); return (i.id + c.name).toLowerCase().includes(q.toLowerCase()); });
+  if (q) rows = rows.filter(i => { const c = DB.cust(i.cust); return (i.id + (c ? c.name : '')).toLowerCase().includes(q.toLowerCase()); });
   rows = [...rows].sort((a, b) => new Date(b.issued) - new Date(a.issued));
 
   const totalOut = inv.filter(i => ['sent', 'overdue', 'partial'].includes(i.status)).reduce((s, i) => s + (i.total - i.amountPaid), 0);
   const overdue = inv.filter(i => i.status === 'overdue').reduce((s, i) => s + (i.total - i.amountPaid), 0);
   const draftTot = inv.filter(i => i.status === 'draft').reduce((s, i) => s + i.total, 0);
-  const paidMonth = store.payments.filter(p => DB.byBiz([{ biz: p.biz }], bizId).length).reduce((s, p) => s + 0, 0);
+  const paidMonth = store.payments.filter(p => bizId === 'all' || p.biz === bizId).reduce((s, p) => s + p.amount, 0);
 
   return sh('div', { className: 'content-inner fade-up' },
     sh(PageHead, { bizId, title: 'Invoices', sub: 'Create, send and collect — with Stripe payment links',
