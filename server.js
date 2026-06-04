@@ -38,8 +38,6 @@ async function initDatabase() {
     );
     if (!existingTables.has('users')) {
       db.run(`CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT, email TEXT, role TEXT, practice TEXT, phone TEXT, photo TEXT)`);
-      db.run(`INSERT INTO users (id, name, email, role, practice, phone) VALUES (?, ?, ?, ?, ?, ?)`,
-        ['user-1', 'Practice Owner', 'owner@mypractice.com.au', 'Bookkeeper · Admin', 'My Practice', '']);
       migrated = true;
     }
     if (!existingTables.has('team')) {
@@ -48,14 +46,6 @@ async function initDatabase() {
     }
     if (!existingTables.has('integrations')) {
       db.run(`CREATE TABLE integrations (id TEXT PRIMARY KEY, name TEXT, desc TEXT, icon TEXT, color TEXT, connected INTEGER)`);
-      [['int-stripe', 'Stripe', 'Payment links & checkout', 'zap', '#635bff', 0],
-       ['int-xero', 'Xero', 'Accounting sync', 'book', '#13b5ea', 0],
-       ['int-gmail', 'Gmail', 'Email integration', 'mail', '#ea4335', 0],
-       ['int-gcal', 'Google Calendar', 'Appointment sync', 'calendar', '#4285f4', 0],
-       ['int-auspost', 'Australia Post', 'Postal / document mailing', 'send', '#dc1928', 0],
-      ].forEach(([id, name, desc, icon, color, connected]) => {
-        db.run(`INSERT INTO integrations VALUES (?, ?, ?, ?, ?, ?)`, [id, name, desc, icon, color, connected]);
-      });
       migrated = true;
     }
 
