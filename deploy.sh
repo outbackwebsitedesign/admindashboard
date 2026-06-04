@@ -12,14 +12,13 @@ set -e
 
 SERVICE_NAME="admindashboard"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
-NODE_BIN="$(which node)"
 PORT=9000
 
 echo "==> Pulling latest from main..."
 git -C "$APP_DIR" pull origin main
 
 echo "==> Installing dependencies..."
-"$NPM_BIN" --prefix "$APP_DIR" install
+npm install
 
 echo "==> Starting HTTP server on port ${PORT}..."
 
@@ -34,7 +33,7 @@ After=network.target
 Type=simple
 User=$(whoami)
 WorkingDirectory=${APP_DIR}
-ExecStart=${NODE_BIN} ${APP_DIR}/server.js
+ExecStart=/usr/bin/node ${APP_DIR}/server.js
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
