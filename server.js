@@ -131,7 +131,7 @@ async function initDatabase() {
         id TEXT PRIMARY KEY,
         biz TEXT,
         thread TEXT,
-        from TEXT,
+        "from" TEXT,
         cust TEXT,
         subject TEXT,
         preview TEXT,
