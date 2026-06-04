@@ -84,8 +84,11 @@ function Button({ children, icon, variant, size, onClick, disabled, style, title
     icon && h(Icon, { name: icon, size: size === 'sm' ? 13 : 15 }), children);
 }
 
-/* ---- Badge / status ---- */
+/* ---- Shared domain constants ---- */
 const STATUS_LABEL = { paid:'Paid', sent:'Sent', overdue:'Overdue', draft:'Draft', partial:'Part-paid', void:'Void', open:'Open', done:'Done', pending:'Pending' };
+const PRIORITY_COLOR = { high: 'var(--neg)', med: 'var(--warn)', low: 'var(--line-strong)' };
+const PAYMENT_TERMS_OPTIONS = [7, 14, 30];
+const CURRENCY_LABEL = 'AUD ($)';
 function Badge({ status, children, dot, className }) {
   const cls = 'badge ' + (status || '') + (className ? ' ' + className : '');
   return h('span', { className: cls }, dot && h('span', { className: 'pip', style: { background: 'currentColor' } }), children || STATUS_LABEL[status] || status);
@@ -178,4 +181,5 @@ function copyText(t) {
 Object.assign(window, {
   Icon, BizChip, Avatar, Button, Badge, Card, Stat, Seg, Modal, Drawer, Empty,
   ToastHost, toast, copyText, useState, useEffect, useRef, useMemo, h,
+  STATUS_LABEL, PRIORITY_COLOR, PAYMENT_TERMS_OPTIONS, CURRENCY_LABEL,
 });

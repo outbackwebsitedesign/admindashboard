@@ -241,7 +241,7 @@ function BusinessDashboard({ bizId, go, openInvoice }) {
         h(Card, { title: 'Open tasks', bodyClass: 'tight', right: h('span', { className: 'badge soft' }, openTasks.length) },
           openTasks.slice(0, 5).map(t =>
             h('div', { key: t.id, className: 'row', style: { gap: 10, padding: '9px 14px', borderBottom: '1px solid var(--line-2)' } },
-              h('span', { style: { width: 7, height: 7, borderRadius: '50%', background: t.prio === 'high' ? 'var(--neg)' : t.prio === 'med' ? 'var(--warn)' : 'var(--line-strong)', flex: 'none' } }),
+              h('span', { style: { width: 7, height: 7, borderRadius: '50%', background: window.PRIORITY_COLOR[t.prio] || 'var(--line-strong)', flex: 'none' } }),
               h('span', { style: { flex: 1, fontSize: 12.5, color: 'var(--ink-2)' } }, t.title),
               h('span', { className: 'mono muted', style: { fontSize: 11 } }, F.relDays(t.due))))))));
 }
