@@ -20,10 +20,9 @@ git -C "$APP_DIR" pull origin main
 
 echo "==> Starting HTTP server on port ${PORT}..."
 
-# Create systemd service if it doesn't exist
-if [ ! -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-    echo "==> Creating systemd service..."
-    sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" > /dev/null <<EOF
+# Always recreate systemd service to ensure it's up to date
+echo "==> Creating systemd service..."
+sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" > /dev/null <<EOF
 [Unit]
 Description=Admin Dashboard HTTP Server
 After=network.target
@@ -44,7 +43,6 @@ EOF
     sudo systemctl daemon-reload
     sudo systemctl enable "$SERVICE_NAME"
     echo "==> Service created and enabled on boot."
-fi
 
 echo "==> Restarting service..."
 sudo systemctl restart "$SERVICE_NAME"
