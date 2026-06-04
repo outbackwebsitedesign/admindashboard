@@ -7,6 +7,24 @@ const { Icon: BIcon, BizChip: BBizChip, Button: BButton, Badge: BBadge, Card: BC
 const BF = window.DB.fmt;
 const bMoney = (n, dp) => BF.fmtAUD(n, { dp });
 
+function auFYLabel() {
+  const m = new Date().getMonth();
+  const y = m >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  return `FY${String(y).slice(2)}–${String(y + 1).slice(2)}`;
+}
+function auFYRange() {
+  const m = new Date().getMonth();
+  const y = m >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  return `1 Jul ${y} – 30 Jun ${y + 1}`;
+}
+function auBASQuarter() {
+  const now = new Date(); const m = now.getMonth(); const yr = now.getFullYear();
+  if (m >= 3 && m <= 5) return { label: `Apr to Jun ${yr}`, due: `28 Jul ${yr}` };
+  if (m >= 6 && m <= 8) return { label: `Jul to Sep ${yr}`, due: `28 Oct ${yr}` };
+  if (m >= 9 && m <= 11) return { label: `Oct to Dec ${yr}`, due: `28 Feb ${yr + 1}` };
+  return { label: `Jan to Mar ${yr}`, due: `28 Apr ${yr}` };
+}
+
 /* ============================================================
    EXPENSES
    ============================================================ */
@@ -79,11 +97,11 @@ function IncomeView({ bizId, store }) {
   return bh('div', { className: 'content-inner fade-up' },
     bh(BPageHead, { bizId, title: 'Income', sub: 'Revenue recognised across the financial year' }),
     bh('div', { className: 'grid g-4', style: { marginBottom: 16 } },
-      bh(BStat, { label: 'Income · FY', icon: 'trendUp', iconColor: 'var(--brand)', value: BF.fmtNum(Math.round(total)), delta: '8.4%', deltaDir: 'up' }),
+      bh(BStat, { label: 'Income · FY', icon: 'trendUp', iconColor: 'var(--brand)', value: BF.fmtNum(Math.round(total)) }),
       bh(BStat, { label: 'This month', icon: 'dollar', iconColor: 'var(--info)', value: BF.fmtNum(series.length ? series[series.length - 1].income : 0) }),
       bh(BStat, { label: 'Avg / month', icon: 'book', iconColor: 'var(--purple)', value: BF.fmtNum(series.length ? Math.round(series.reduce((s, x) => s + x.income, 0) / series.length) : 0) }),
       bh(BStat, { label: 'Received (cleared)', icon: 'card', iconColor: 'var(--brand)', value: BF.fmtNum(Math.round(pays.reduce((s, p) => s + p.amount, 0))) })),
-    series.length ? bh(BCard, { title: 'Income trend', sub: 'FY25–26', className: 'fade-up', style: { marginBottom: 16 } },
+    series.length ? bh(BCard, { title: 'Income trend', sub: auFYLabel(), className: 'fade-up', style: { marginBottom: 16 } },
       bh(BCashflow, { series, fmt: BF })) : null,
     bh('div', { className: 'split wide' },
       bh(BCard, { title: 'Income transactions', bodyClass: 'tight' },
@@ -193,7 +211,7 @@ function ReportsView({ bizId, store }) {
   ];
 
   return bh('div', { className: 'content-inner fade-up' },
-    bh(BPageHead, { bizId, title: 'Reports', sub: 'Financial year 2025–26',
+    bh(BPageHead, { bizId, title: 'Reports', sub: 'Financial year ' + auFYLabel(),
       actions: [bh(BButton, { key: 'p', variant: 'ghost', icon: 'download' }, 'Export PDF'), bh(BButton, { key: 'x', variant: 'ghost', icon: 'download' }, 'CSV')] }),
     bh('div', { className: 'grid', style: { gridTemplateColumns: '210px 1fr', gap: 16, alignItems: 'start' } },
       bh('div', { className: 'card', style: { padding: 7 } },
@@ -219,7 +237,7 @@ function reportRow(label, val, opts = {}) {
 function PnL({ income, expense, series }) {
   const cogs = Math.round(expense * 0.34), wages = Math.round(expense * 0.31), other = expense - cogs - wages;
   const gross = income - cogs, net = income - expense;
-  return bh(BCard, { title: 'Profit & Loss', sub: '1 Jul 2025 – 30 Jun 2026' },
+  return bh(BCard, { title: 'Profit & Loss', sub: auFYRange() },
     bh('div', { style: { maxWidth: 560 } },
       bh('div', { className: 'section-title' }, 'Income'),
       reportRow('Sales income', bMoney(income, 0), { indent: true }),
@@ -237,7 +255,8 @@ function PnL({ income, expense, series }) {
 
 function BAS({ income, expense }) {
   const g1 = income, gstCollected = Math.round(income / 11), gstPaid = Math.round(expense / 11), net = gstCollected - gstPaid;
-  return bh(BCard, { title: 'GST / BAS summary', sub: 'Quarter — Apr to Jun 2026' },
+  const q = auBASQuarter();
+  return bh(BCard, { title: 'GST / BAS summary', sub: 'Quarter — ' + q.label },
     bh('div', { style: { maxWidth: 560 } },
       reportRow('G1 — Total sales (incl. GST)', bMoney(g1, 0), { bold: true }),
       reportRow('1A — GST on sales (collected)', bMoney(gstCollected, 0), { sub: true }),
@@ -245,7 +264,7 @@ function BAS({ income, expense }) {
       reportRow('Net GST payable to ATO', bMoney(net, 0), { total: true, color: 'var(--neg)' }),
       bh('div', { className: 'card flat', style: { marginTop: 18, padding: 12, background: 'var(--info-tint)', border: '1px solid rgba(47,95,192,0.2)', display: 'flex', gap: 9 } },
         bh(BIcon, { name: 'alert', size: 16, style: { color: 'var(--info)', flex: 'none', marginTop: 1 } }),
-        bh('div', { style: { fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5 } }, 'Q4 BAS is due 28 July 2026. This summary is an estimate — review unreconciled transactions before lodging.'))));
+        bh('div', { style: { fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5 } }, 'BAS is due ' + q.due + '. This summary is an estimate — review unreconciled transactions before lodging.'))));
 }
 
 function AgedReceivables({ bizId, store }) {

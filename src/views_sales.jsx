@@ -245,7 +245,7 @@ function InvoiceDrawer({ id, store, onClose }) {
       // totals
       sh('div', { style: { marginLeft: 'auto', width: 260, marginBottom: 18 } },
         totalRow('Subtotal', sMoney(inv.subtotal, 2)),
-        totalRow('GST (10%)', sMoney(inv.gst, 2)),
+        totalRow('GST (' + (inv.subtotal ? (inv.gst / inv.subtotal * 100).toFixed(0) : '10') + '%)', sMoney(inv.gst, 2)),
         totalRow('Total', sMoney(inv.total, 2), true),
         inv.amountPaid > 0 && totalRow('Paid', '−' + sMoney(inv.amountPaid, 2), false, 'var(--pos)'),
         inv.amountPaid > 0 && inv.amountPaid < inv.total && totalRow('Balance due', sMoney(due, 2), true, 'var(--neg)')),
