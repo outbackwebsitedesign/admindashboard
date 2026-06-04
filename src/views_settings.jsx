@@ -24,7 +24,7 @@ function SettingsView({ bizId, store }) {
         tab === 'integrations' ? sth(IntegrationsSettings, { bizId }) :
         tab === 'account' ? sth(AccountSettings) :
         tab === 'business' ? sth(BusinessProfile, { bizId }) :
-        tab === 'invoicing' ? sth(InvoicingSettings, { bizId }) :
+        tab === 'invoicing' ? sth(InvoicingSettings, { bizId, store }) :
         tab === 'docs' ? sth(DocsSettings, { bizId }) :
         sth(TeamSettings))));
 }
@@ -76,19 +76,53 @@ function IntegrationsSettings({ bizId }) {
         it.on ? sth(StBadge, { status: 'paid', dot: true }, 'Connected') : sth(StButton, { size: 'sm' }, 'Connect')))));
 }
 
-function InvoicingSettings({ bizId }) {
-  const b = window.DB.biz(bizId);
+function InvoicingSettings({ bizId, store }) {
+  const DB = window.DB;
+  const b = DB.biz(bizId);
+  const gstRate = b?.gstRate ?? 0.1;
+  const invoicePrefix = b?.invoicePrefix || 'INV-';
+  const paymentTermsDays = b?.paymentTermsDays ?? 14;
+  const stripeFeeRate = b?.stripeFeeRate ?? 0.0175;
+  const stripeFeeFlat = b?.stripeFeeFlat ?? 0.30;
+
+  const [prefix, setPrefix] = window.useState(invoicePrefix);
+  const [gst, setGst] = window.useState((gstRate * 100).toFixed(0));
+  const [terms, setTerms] = window.useState(String(paymentTermsDays));
+  const [feeRate, setFeeRate] = window.useState((stripeFeeRate * 100).toFixed(2));
+  const [feeFlat, setFeeFlat] = window.useState(stripeFeeFlat.toFixed(2));
+  const [saved, setSaved] = window.useState(false);
+
+  const save = async () => {
+    const updates = {
+      invoicePrefix: prefix,
+      gstRate: parseFloat(gst) / 100 || 0.1,
+      paymentTermsDays: parseInt(terms) || 14,
+      stripeFeeRate: parseFloat(feeRate) / 100 || 0.0175,
+      stripeFeeFlat: parseFloat(feeFlat) || 0.30,
+    };
+    await DB.db.update('businesses', bizId, updates);
+    Object.assign(b, updates);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return sth('div', { className: 'col', style: { gap: 16 } },
     sth(StCard, { title: 'Invoicing & tax' },
       sth('div', { className: 'row', style: { gap: 12, marginBottom: 14 } },
-        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Invoice prefix'), sth('input', { className: 'input mono', defaultValue: b.id === 'nbs' ? 'NB-' : b.id === 'bws' ? 'BW-' : 'INV-' })),
-        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Default payment terms'), sth('select', null, sth('option', null, 'Net 14 days'), sth('option', null, 'Net 7 days'), sth('option', null, 'Net 30 days')))),
+        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Invoice prefix'), sth('input', { className: 'input mono', value: prefix, onChange: e => setPrefix(e.target.value) })),
+        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Default payment terms (days)'), sth('input', { className: 'input mono', value: terms, onChange: e => setTerms(e.target.value) }))),
       sth('div', { className: 'row', style: { gap: 12, marginBottom: 14 } },
-        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'GST rate'), sth('input', { className: 'input mono', defaultValue: '10%' })),
+        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'GST rate (%)'), sth('input', { className: 'input mono', value: gst, onChange: e => setGst(e.target.value) })),
         sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Currency'), sth('input', { className: 'input', defaultValue: 'AUD ($)' }))),
-      sth('div', { className: 'card flat', style: { padding: 12, background: 'var(--brand-tint)', border: '1px solid var(--brand-tint-2)', display: 'flex', gap: 9, alignItems: 'center' } },
+      sth('div', { className: 'row', style: { gap: 12, marginBottom: 14 } },
+        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Stripe fee rate (%)'), sth('input', { className: 'input mono', value: feeRate, onChange: e => setFeeRate(e.target.value) })),
+        sth('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sth('label', null, 'Stripe flat fee ($)'), sth('input', { className: 'input mono', value: feeFlat, onChange: e => setFeeFlat(e.target.value) }))),
+      sth('div', { className: 'row', style: { marginTop: 4, gap: 8 } },
+        sth(StButton, { variant: 'primary', onClick: save }, saved ? 'Saved!' : 'Save changes'),
+        sth(StButton, { variant: 'ghost', onClick: () => { setPrefix(invoicePrefix); setGst((gstRate * 100).toFixed(0)); setTerms(String(paymentTermsDays)); setFeeRate((stripeFeeRate * 100).toFixed(2)); setFeeFlat(stripeFeeFlat.toFixed(2)); } }, 'Reset')),
+      b?.gst && sth('div', { className: 'card flat', style: { padding: 12, background: 'var(--brand-tint)', border: '1px solid var(--brand-tint-2)', display: 'flex', gap: 9, alignItems: 'center' } },
         sth(StIcon, { name: 'receipt', size: 16, style: { color: 'var(--brand-700)', flex: 'none' } }),
-        sth('span', { style: { fontSize: 12, color: 'var(--ink-2)' } }, 'This business is registered for GST. Invoices include 10% GST and feed the quarterly BAS report.'))));
+        sth('span', { style: { fontSize: 12, color: 'var(--ink-2)' } }, 'This business is registered for GST. Invoices include ' + (gstRate * 100).toFixed(0) + '% GST and feed the quarterly BAS report.'))));
 }
 
 function DocsSettings({ bizId }) {

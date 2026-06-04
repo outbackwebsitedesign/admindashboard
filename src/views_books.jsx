@@ -113,17 +113,35 @@ function BookkeepingView({ bizId, store }) {
   const exp = DB.byBiz(DB.expenses, bizId);
   const unrec = exp.filter(e => e.status === 'unreconciled');
 
-  // chart of accounts roll-up
+  // chart of accounts roll-up derived from actual expense records
+  const CAT_MAP = {
+    'Cost of goods sold': { code: '310', name: 'Cost of goods sold', type: 'Direct cost' },
+    'COGS': { code: '310', name: 'Cost of goods sold', type: 'Direct cost' },
+    'Wages': { code: '400', name: 'Wages & salaries', type: 'Operating' },
+    'Salaries': { code: '400', name: 'Wages & salaries', type: 'Operating' },
+    'Materials': { code: '420', name: 'Materials & supplies', type: 'Operating' },
+    'Supplies': { code: '420', name: 'Materials & supplies', type: 'Operating' },
+    'Rent': { code: '445', name: 'Rent & outgoings', type: 'Operating' },
+    'Software': { code: '485', name: 'Software & subscriptions', type: 'Operating' },
+    'Subscriptions': { code: '485', name: 'Software & subscriptions', type: 'Operating' },
+  };
+  const expTotals = {};
+  DB.byBiz(DB.expenses, bizId).forEach(e => {
+    const acct = CAT_MAP[e.cat] || { code: '490', name: e.cat || 'Other expenses', type: 'Operating' };
+    const key = acct.code + '|' + acct.name;
+    if (!expTotals[key]) expTotals[key] = { ...acct, bal: 0 };
+    expTotals[key].bal += e.amount;
+  });
+  const expenseAccounts = Object.values(expTotals)
+    .map(a => ({ ...a, bal: Math.round(a.bal), dir: 'dr' }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+  const bizGstRate = biz?.gstRate ?? 0.1;
+  const gstDivisor = 1 + bizGstRate;
   const accounts = [
     { code: '200', name: 'Sales income', type: 'Revenue', bal: income, dir: 'cr' },
-    { code: '260', name: 'Other income', type: 'Revenue', bal: Math.round(income * 0.03), dir: 'cr' },
-    { code: '310', name: 'Cost of goods sold', type: 'Direct cost', bal: Math.round(expense * 0.34), dir: 'dr' },
-    { code: '400', name: 'Wages & salaries', type: 'Operating', bal: Math.round(expense * 0.31), dir: 'dr' },
-    { code: '420', name: 'Materials & supplies', type: 'Operating', bal: Math.round(expense * 0.16), dir: 'dr' },
-    { code: '445', name: 'Rent & outgoings', type: 'Operating', bal: Math.round(expense * 0.09), dir: 'dr' },
-    { code: '485', name: 'Software & subscriptions', type: 'Operating', bal: Math.round(expense * 0.04), dir: 'dr' },
+    ...expenseAccounts,
     { code: '610', name: 'Business bank account', type: 'Asset', bal: cash, dir: 'dr' },
-    { code: '820', name: 'GST owing', type: 'Liability', bal: Math.round(income / 11 - expense / 11), dir: 'cr' },
+    { code: '820', name: 'GST owing', type: 'Liability', bal: Math.round(income / gstDivisor - expense / gstDivisor), dir: 'cr' },
   ];
 
   return bh('div', { className: 'content-inner fade-up' },

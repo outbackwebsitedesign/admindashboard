@@ -289,7 +289,8 @@ function NewInvoiceModal({ bizId, store, onClose }) {
   const [cust, setCust] = window.useState(custs[0] && custs[0].id);
   const [items, setItems] = window.useState([{ desc: '', qty: 1, unit: 0 }]);
   const sub = items.reduce((s, i) => s + (+i.qty || 0) * (+i.unit || 0), 0);
-  const gst = sub * 0.1;
+  const gstRate = DB.biz(biz)?.gstRate ?? 0.1;
+  const gst = sub * gstRate;
 
   const upd = (k, f, v) => setItems(items.map((it, i) => i === k ? { ...it, [f]: v } : it));
   return sh(SModal, { title: 'New invoice', onClose, width: 620,
@@ -316,7 +317,7 @@ function NewInvoiceModal({ bizId, store, onClose }) {
         sh('div', { className: 'mono', style: { width: 78, textAlign: 'right', fontSize: 12.5, alignSelf: 'center', color: 'var(--ink)' } }, sMoney((+it.qty || 0) * (+it.unit || 0), 2))))),
     sh(SButton, { size: 'sm', variant: 'ghost', icon: 'plus', onClick: () => setItems([...items, { desc: '', qty: 1, unit: 0 }]) }, 'Add line'),
     sh('div', { style: { marginLeft: 'auto', width: 240, marginTop: 14 } },
-      totalRow('Subtotal', sMoney(sub, 2)), totalRow('GST (10%)', sMoney(gst, 2)), totalRow('Total', sMoney(sub + gst, 2), true)));
+      totalRow('Subtotal', sMoney(sub, 2)), totalRow('GST (' + (gstRate * 100).toFixed(0) + '%)', sMoney(gst, 2)), totalRow('Total', sMoney(sub + gst, 2), true)));
 }
 
 /* ============================================================
