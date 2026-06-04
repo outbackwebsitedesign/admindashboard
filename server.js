@@ -183,8 +183,8 @@ function handleAPI(req, res, pathname) {
   
   try {
     const urlParts = pathname.split('/').filter(Boolean);
-    const collection = urlParts[1]; // /api/db/{collection}
-    const id = urlParts[2]; // /api/db/{collection}/{id}
+    const collection = urlParts[2]; // /api/db/{collection}
+    const id = urlParts[3]; // /api/db/{collection}/{id}
     
     res.setHeader('Content-Type', 'application/json');
     
