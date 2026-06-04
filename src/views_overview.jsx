@@ -8,6 +8,21 @@ const { Icon, BizChip, Avatar, Button, Badge, Card, Stat, Seg, Sparkline,
 function money(n, dp) { return window.DB.fmt.fmtAUD(n, { dp }); }
 const F = window.DB.fmt;
 
+// Australian FY: Jul 1 – Jun 30
+function auFYLabel() {
+  const m = new Date().getMonth(); // 0=Jan … 6=Jul
+  const y = m >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  return `FY${String(y).slice(2)}–${String(y + 1).slice(2)}`;
+}
+// BAS quarters: Q1 Jul-Sep, Q2 Oct-Dec, Q3 Jan-Mar, Q4 Apr-Jun
+function auBASQuarter() {
+  const m = new Date().getMonth();
+  if (m >= 3 && m <= 5) return 'Apr–Jun quarter';
+  if (m >= 6 && m <= 8) return 'Jul–Sep quarter';
+  if (m >= 9 && m <= 11) return 'Oct–Dec quarter';
+  return 'Jan–Mar quarter';
+}
+
 /* small status pill row used in lists */
 function InvRow({ inv, onOpen }) {
   const DB = window.DB; const c = DB.cust(inv.cust);
@@ -55,19 +70,17 @@ function GlobalDashboard({ go, openInvoice }) {
     // KPI ROW
     h('div', { className: 'grid g-4', style: { marginBottom: 16 } },
       h(Stat, { label: 'Income · FY to date', icon: 'trendUp', iconColor: 'var(--brand)', value: F.fmtNum(Math.round(totalIncome)),
-        delta: '8.4%', deltaDir: 'up', foot: 'vs last FY',
         spark: h(Sparkline, { data: series.map(s => s.income), w: 96, hgt: 34, color: 'var(--brand)' }) }),
       h(Stat, { label: 'Expenses · FY to date', icon: 'trendDown', iconColor: 'var(--neg)', value: F.fmtNum(Math.round(totalExpense)),
-        delta: '3.1%', deltaDir: 'up', foot: 'vs last FY',
         spark: h(Sparkline, { data: series.map(s => s.expense), w: 96, hgt: 34, color: 'var(--neg)', fill: true }) }),
       h(Stat, { label: 'Net profit · FY', icon: 'dollar', iconColor: 'var(--info)', value: F.fmtNum(netProfit),
-        delta: '12.6%', deltaDir: 'up', foot: ((netProfit / totalIncome) * 100).toFixed(0) + '% margin' }),
+        foot: ((netProfit / totalIncome) * 100).toFixed(0) + '% margin' }),
       h(Stat, { label: 'Cash on hand', icon: 'bank', iconColor: 'var(--purple)', value: F.fmtNum(totalCash),
         foot: 'across ' + businesses.length + ' accounts' })),
 
     // CASHFLOW + RIGHT RAIL
     h('div', { className: 'split wide', style: { marginBottom: 16 } },
-      h(Card, { title: 'Cash flow', sub: 'All businesses · FY25–26',
+      h(Card, { title: 'Cash flow', sub: 'All businesses · ' + auFYLabel(),
         right: h('div', { className: 'row', style: { gap: 14 } },
           h(Legend, { color: 'var(--brand)', label: 'Income' }),
           h(Legend, { color: 'var(--neg)', label: 'Expenses', dash: true })) },
@@ -90,7 +103,7 @@ function GlobalDashboard({ go, openInvoice }) {
             }),
             h('div', { style: { paddingTop: 10 } }, h(Button, { size: 'sm', variant: 'ghost', icon: 'arrowRight', onClick: () => go('invoices') }, 'Review all invoices'))
           ) : h('div', { className: 'muted', style: { fontSize: 12.5, padding: '6px 0' } }, 'Nothing overdue. All clear.')),
-        h(Card, { title: 'BAS / GST estimate', sub: 'Apr–Jun quarter' },
+        h(Card, { title: 'BAS / GST estimate', sub: auBASQuarter() },
           h('div', { className: 'row between', style: { marginBottom: 8 } },
             h('span', { className: 'muted', style: { fontSize: 12 } }, 'GST collected'),
             h('span', { className: 'mono', style: { fontWeight: 600 } }, money(totalIncome / 11, 0))),
@@ -188,8 +201,8 @@ function BusinessDashboard({ bizId, go, openInvoice }) {
     // KPIs
     h('div', { className: 'grid g-4', style: { marginBottom: 16 } },
       h(Stat, { label: 'Income · FY', icon: 'trendUp', iconColor: 'var(--brand)', value: F.fmtNum(b.ytdIncome),
-        delta: '6.2%', deltaDir: 'up', spark: h(Sparkline, { data: series.map(s => s.income), w: 90, hgt: 34, color: b.color }) }),
-      h(Stat, { label: 'Expenses · FY', icon: 'trendDown', iconColor: 'var(--neg)', value: F.fmtNum(b.ytdExpense), delta: '2.0%', deltaDir: 'up' }),
+        spark: h(Sparkline, { data: series.map(s => s.income), w: 90, hgt: 34, color: b.color }) }),
+      h(Stat, { label: 'Expenses · FY', icon: 'trendDown', iconColor: 'var(--neg)', value: F.fmtNum(b.ytdExpense) }),
       h(Stat, { label: 'Net profit', icon: 'dollar', iconColor: 'var(--info)', value: F.fmtNum(net), foot: ((net / b.ytdIncome) * 100).toFixed(0) + '% margin' }),
       h(Stat, { label: 'Outstanding', icon: 'invoice', iconColor: 'var(--warn)', value: F.fmtNum(Math.round(outstanding)),
         foot: overdue.length ? overdue.length + ' overdue' : 'all current' })),
