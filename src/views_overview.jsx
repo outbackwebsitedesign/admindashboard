@@ -14,14 +14,6 @@ function auFYLabel() {
   const y = m >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
   return `FY${String(y).slice(2)}–${String(y + 1).slice(2)}`;
 }
-// BAS quarters: Q1 Jul-Sep, Q2 Oct-Dec, Q3 Jan-Mar, Q4 Apr-Jun
-function auBASQuarter() {
-  const m = new Date().getMonth();
-  if (m >= 3 && m <= 5) return 'Apr–Jun quarter';
-  if (m >= 6 && m <= 8) return 'Jul–Sep quarter';
-  if (m >= 9 && m <= 11) return 'Oct–Dec quarter';
-  return 'Jan–Mar quarter';
-}
 
 /* small status pill row used in lists */
 function InvRow({ inv, onOpen }) {
@@ -103,7 +95,7 @@ function GlobalDashboard({ go, openInvoice }) {
             }),
             h('div', { style: { paddingTop: 10 } }, h(Button, { size: 'sm', variant: 'ghost', icon: 'arrowRight', onClick: () => go('invoices') }, 'Review all invoices'))
           ) : h('div', { className: 'muted', style: { fontSize: 12.5, padding: '6px 0' } }, 'Nothing overdue. All clear.')),
-        h(Card, { title: 'BAS / GST estimate', sub: auBASQuarter() },
+        h(Card, { title: 'BAS / GST estimate', sub: auBASQuarter().label },
           h('div', { className: 'row between', style: { marginBottom: 8 } },
             h('span', { className: 'muted', style: { fontSize: 12 } }, 'GST collected'),
             h('span', { className: 'mono', style: { fontWeight: 600 } }, money(totalIncome / 11, 0))),
