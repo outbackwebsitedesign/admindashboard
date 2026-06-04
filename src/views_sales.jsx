@@ -297,10 +297,13 @@ function NewInvoiceModal({ bizId, store, onClose }) {
       sh('div', { className: 'mono', key: 't', style: { fontSize: 13, fontWeight: 600 } }, 'Total ' + sMoney(sub + gst, 2)),
       sh('div', { className: 'spacer', key: 's' }),
       sh(SButton, { key: 'd', variant: 'ghost', onClick: onClose }, 'Save draft'),
-      sh(SButton, { key: 'c', variant: 'primary', icon: 'send', onClick: () => { store.addInvoice(biz, cust, items); onClose(); sToast('Invoice created', 'invoice'); } }, 'Create & send')] },
+      sh(SButton, { key: 'c', variant: 'primary', icon: 'send', onClick: () => {
+        if (!items.some(x => x.desc)) { sToast('Add at least one line item', 'alert'); return; }
+        store.addInvoice(biz, cust, items); onClose(); sToast('Invoice created', 'invoice');
+      } }, 'Create & send')] },
     sh('div', { className: 'row', style: { gap: 12, marginBottom: 14 } },
       sh('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sh('label', null, 'Business'),
-        sh('select', { value: biz, onChange: e => { setBiz(e.target.value); const f = DB.customers.find(c => c.biz === e.target.value); setCust(f && f.id); } },
+        sh('select', { value: biz, onChange: e => { setBiz(e.target.value); const f = DB.customers.find(c => c.biz === e.target.value); setCust(f ? f.id : null); } },
           DB.businesses.map(b => sh('option', { key: b.id, value: b.id }, b.name)))),
       sh('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sh('label', null, 'Customer'),
         sh('select', { value: cust, onChange: e => setCust(e.target.value) }, custs.map(c => sh('option', { key: c.id, value: c.id }, c.name))))),
