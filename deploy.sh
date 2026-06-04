@@ -12,6 +12,7 @@ set -e
 
 SERVICE_NAME="admindashboard"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+NODE_BIN="$(which node)"
 PORT=9000
 
 echo "==> Pulling latest from main..."
@@ -31,7 +32,7 @@ After=network.target
 Type=simple
 User=$(whoami)
 WorkingDirectory=${APP_DIR}
-ExecStart=/usr/bin/python3 -m http.server ${PORT} --bind 0.0.0.0
+ExecStart=${NODE_BIN} ${APP_DIR}/server.js
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
