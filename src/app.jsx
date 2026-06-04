@@ -190,6 +190,22 @@ function App() {
     ah(ToastHost, null));
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  componentDidCatch(e, info) { console.error('React crash:', e, info.componentStack); }
+  render() {
+    if (this.state.error) {
+      return ah('div', { style: { padding: 40, fontFamily: 'monospace', color: '#c00' } },
+        ah('h2', null, 'App crashed — check the browser console (F12) for details'),
+        ah('pre', { style: { whiteSpace: 'pre-wrap', fontSize: 13 } }, String(this.state.error)));
+    }
+    return this.props.children;
+  }
+}
+
 window.DBReady.then(() => {
-  ReactDOM.createRoot(document.getElementById('root')).render(ah(App, null));
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    ah(ErrorBoundary, null, ah(App, null))
+  );
 });

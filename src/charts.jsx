@@ -5,6 +5,7 @@ const { useState: _uS, useRef: _uR, useEffect: _uE, createElement: _h } = React;
 
 /* ---- Sparkline ---- */
 function Sparkline({ data, w = 90, hgt = 30, color = 'var(--brand)', fill = true, strokeW = 1.6 }) {
+  if (!data || data.length < 2) return _h('svg', { width: w, height: hgt });
   const max = Math.max(...data), min = Math.min(...data);
   const rng = max - min || 1;
   const pts = data.map((v, i) => [ (i / (data.length - 1)) * w, hgt - 3 - ((v - min) / rng) * (hgt - 6) ]);
@@ -22,9 +23,10 @@ function Sparkline({ data, w = 90, hgt = 30, color = 'var(--brand)', fill = true
 /* ---- Income vs Expense area/line chart with grid + hover ---- */
 function CashflowChart({ series, height = 240, fmt }) {
   const [hover, setHover] = _uS(null);
+  if (!series || series.length < 2) return _h('div', { style: { height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 13 } }, 'No data yet');
   const w = 760, pad = { l: 46, r: 14, t: 14, b: 26 };
   const innerW = w - pad.l - pad.r, innerH = height - pad.t - pad.b;
-  const maxV = Math.max(...series.map(s => Math.max(s.income, s.expense))) * 1.12;
+  const maxV = (Math.max(...series.map(s => Math.max(s.income, s.expense))) || 1) * 1.12;
   const x = i => pad.l + (i / (series.length - 1)) * innerW;
   const y = v => pad.t + innerH - (v / maxV) * innerH;
   const path = (key) => series.map((s, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(s[key]).toFixed(1)).join(' ');
@@ -72,9 +74,10 @@ function CashflowChart({ series, height = 240, fmt }) {
 
 /* ---- Net bar chart (per month profit) ---- */
 function NetBars({ series, height = 150, fmt }) {
+  if (!series || series.length === 0) return _h('div', { style: { height } });
   const w = 760, pad = { l: 40, r: 8, t: 10, b: 22 };
   const innerW = w - pad.l - pad.r, innerH = height - pad.t - pad.b;
-  const maxV = Math.max(...series.map(s => Math.abs(s.net))) * 1.1;
+  const maxV = (Math.max(...series.map(s => Math.abs(s.net))) || 1) * 1.1;
   const bw = innerW / series.length * 0.56;
   const x = i => pad.l + (i + 0.5) / series.length * innerW;
   const zeroY = pad.t + innerH;

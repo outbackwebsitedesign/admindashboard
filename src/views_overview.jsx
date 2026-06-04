@@ -84,7 +84,7 @@ function GlobalDashboard({ go, openInvoice }) {
               return h('div', { key: inv.id, className: 'row', style: { padding: '8px 0', borderBottom: '1px solid var(--line-2)', cursor: 'pointer' }, onClick: () => openInvoice(inv) },
                 h(BizChip, { biz: inv.biz, size: 'sm' }),
                 h('div', { style: { flex: 1, minWidth: 0 } },
-                  h('div', { style: { fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, c.name),
+                  h('div', { style: { fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, c ? c.name : '—'),
                   h('div', { className: 'muted', style: { fontSize: 11 } }, inv.id + ' · due ' + F.relDays(inv.due))),
                 h('span', { className: 'mono', style: { fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' } }, money(inv.total - inv.amountPaid, 0)));
             }),
@@ -128,7 +128,7 @@ function Legend({ color, label, dash, square }) {
 /* business summary card on the global dash */
 function BizCard({ b, go }) {
   const DB = window.DB;
-  const s = DB.series[b.id];
+  const s = DB.series[b.id] || [];
   const net = b.ytdIncome - b.ytdExpense;
   const open = DB.invoices.filter(i => i.biz === b.id && ['sent', 'overdue', 'partial'].includes(i.status))
     .reduce((a, i) => a + (i.total - i.amountPaid), 0);
@@ -156,7 +156,7 @@ function BizCard({ b, go }) {
    ============================================================ */
 function BusinessDashboard({ bizId, go, openInvoice }) {
   const DB = window.DB; const b = DB.biz(bizId); const F = DB.fmt;
-  const series = DB.series[bizId];
+  const series = DB.series[bizId] || [];
   const inv = DB.invoices.filter(i => i.biz === bizId);
   const net = b.ytdIncome - b.ytdExpense;
   const outstanding = inv.filter(i => ['sent', 'overdue', 'partial'].includes(i.status)).reduce((s, i) => s + (i.total - i.amountPaid), 0);
@@ -209,7 +209,7 @@ function BusinessDashboard({ bizId, go, openInvoice }) {
           h('tbody', null, recentInv.map(i => { const c = DB.cust(i.cust);
             return h('tr', { key: i.id, className: 'clickable', onClick: () => openInvoice(i) },
               h('td', { className: 'id' }, i.id),
-              h('td', { className: 'strong' }, c.name),
+              h('td', { className: 'strong' }, c ? c.name : '—'),
               h('td', { className: 'amt' }, money(i.total, 2)),
               h('td', null, h(Badge, { status: i.status }))); })))),
         ),
