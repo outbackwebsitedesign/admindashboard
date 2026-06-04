@@ -12,8 +12,8 @@ const oMoney = (n, dp) => OF.fmtAUD(n, { dp });
 function AppointmentsView({ bizId, store }) {
   const DB = window.DB;
   const appts = DB.byBiz(DB.appointments, bizId);
-  // build June 2026 grid; today = 4 Jun 2026
-  const year = 2026, month = 5; // June
+  const _today = new Date();
+  const year = _today.getFullYear(), month = _today.getMonth();
   const first = new Date(year, month, 1);
   const startDow = first.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -29,14 +29,14 @@ function AppointmentsView({ bizId, store }) {
   const upcoming = appts.filter(a => OF.daysFromToday(a.start) >= 0).sort((a, b) => new Date(a.start) - new Date(b.start));
 
   return oh('div', { className: 'content-inner fade-up' },
-    oh(OPageHead, { bizId, title: 'Appointments', sub: 'June 2026',
+    oh(OPageHead, { bizId, title: 'Appointments', sub: OF.MONTHS[month] + ' ' + year,
       actions: [oh(OButton, { key: 'n', variant: 'primary', icon: 'plus' }, 'New appointment')] }),
     oh('div', { className: 'grid', style: { gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' } },
       oh(OCard, { bodyClass: 'tight' },
         oh('div', { className: 'row between', style: { padding: '12px 16px' } },
           oh('div', { className: 'row', style: { gap: 8 } },
             oh('button', { className: 'icon-btn', style: { width: 30, height: 30 } }, oh(OIcon, { name: 'chevLeft', size: 16 })),
-            oh('span', { style: { fontSize: 14, fontWeight: 600 } }, 'June 2026'),
+            oh('span', { style: { fontSize: 14, fontWeight: 600 } }, OF.MONTHS[month] + ' ' + year),
             oh('button', { className: 'icon-btn', style: { width: 30, height: 30 } }, oh(OIcon, { name: 'chevRight', size: 16 }))),
           oh('span', { className: 'muted', style: { fontSize: 11.5 } }, appts.length + ' bookings')),
         oh('div', { className: 'cal', style: { margin: '0 14px 14px' } },
@@ -44,7 +44,7 @@ function AppointmentsView({ bizId, store }) {
           cells.map((d, i) => {
             if (!d) return oh('div', { className: 'cal-cell off', key: i });
             const evs = apptsOn(d);
-            const isToday = d === 4;
+            const isToday = d === _today.getDate() && month === _today.getMonth() && year === _today.getFullYear();
             return oh('div', { className: 'cal-cell' + (isToday ? ' today' : ''), key: i },
               oh('div', { className: 'cal-date' }, d),
               evs.slice(0, 3).map(a => { const c = DB.cust(a.cust);
@@ -211,7 +211,6 @@ function EmailView({ bizId, store }) {
               oh('div', { className: 'muted', style: { fontSize: 11.5 } }, cur.dir === 'in' ? 'to ' + DB.biz(cur.biz).email : 'sent from ' + DB.biz(cur.biz).email)))),
         oh('div', { style: { padding: 20, flex: 1, overflowY: 'auto', fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.7 } },
           oh('p', { style: { marginTop: 0 } }, cur.preview),
-          oh('p', null, 'Let me know if you need anything else from our end. Happy to jump on a quick call if that\u2019s easier.'),
           oh('p', { style: { color: 'var(--muted)' } }, '— ' + cur.from),
           cur.cust && oh('div', { className: 'card flat', style: { marginTop: 16, padding: 12, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', gap: 10 } },
             oh(OIcon, { name: 'link', size: 15, style: { color: 'var(--muted)' } }),

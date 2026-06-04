@@ -112,6 +112,42 @@ window.DB = {
   db: Database
 };
 
+// Build monthly income/expense/net series from invoices + expenses (last 12 months)
+function buildSeries(businesses, invoices, expenses) {
+  const today = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push({ year: d.getFullYear(), month: d.getMonth(), m: MONTHS[d.getMonth()] });
+  }
+
+  function seriesFor(bizId) {
+    return months.map(({ year, month, m }, idx) => {
+      const isFuture = year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth());
+      const income = invoices
+        .filter(i => {
+          if (bizId !== 'all' && i.biz !== bizId) return false;
+          if (!i.paid && i.status !== 'paid') return false;
+          const d = new Date(i.paid || i.issued);
+          return d.getFullYear() === year && d.getMonth() === month;
+        })
+        .reduce((s, i) => s + (i.total || 0), 0);
+      const expense = expenses
+        .filter(e => {
+          if (bizId !== 'all' && e.biz !== bizId) return false;
+          const d = new Date(e.date);
+          return d.getFullYear() === year && d.getMonth() === month;
+        })
+        .reduce((s, e) => s + (e.amount || 0), 0);
+      return { m, income, expense, net: income - expense, future: isFuture };
+    });
+  }
+
+  const result = { all: seriesFor('all') };
+  businesses.forEach(b => { result[b.id] = seriesFor(b.id); });
+  return result;
+}
+
 // Load initial data from API, then update window.DB and signal ready
 window.DBReady = (async function loadInitialData() {
   try {
@@ -140,7 +176,7 @@ window.DBReady = (async function loadInitialData() {
       timeLogs,
       emails,
       documents,
-      series: { all: [] },
+      series: buildSeries(businesses, invoices, expenses),
       catBreakdown: (biz) => {
         const map = {};
         expenses.filter(e => e.biz === biz).forEach(e => { map[e.cat] = (map[e.cat] || 0) + e.amount; });

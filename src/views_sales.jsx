@@ -112,13 +112,13 @@ function InvoicesView({ bizId, store, openInv, setOpenInv }) {
   const counts = { all: inv.length };
   ['draft', 'sent', 'overdue', 'partial', 'paid'].forEach(s => counts[s] = inv.filter(i => i.status === s).length);
   let rows = filter === 'all' ? inv : inv.filter(i => i.status === filter);
-  if (q) rows = rows.filter(i => { const c = DB.cust(i.cust); return (i.id + c.name).toLowerCase().includes(q.toLowerCase()); });
+  if (q) rows = rows.filter(i => { const c = DB.cust(i.cust); return (i.id + (c ? c.name : '')).toLowerCase().includes(q.toLowerCase()); });
   rows = [...rows].sort((a, b) => new Date(b.issued) - new Date(a.issued));
 
   const totalOut = inv.filter(i => ['sent', 'overdue', 'partial'].includes(i.status)).reduce((s, i) => s + (i.total - i.amountPaid), 0);
   const overdue = inv.filter(i => i.status === 'overdue').reduce((s, i) => s + (i.total - i.amountPaid), 0);
   const draftTot = inv.filter(i => i.status === 'draft').reduce((s, i) => s + i.total, 0);
-  const paidMonth = store.payments.filter(p => DB.byBiz([{ biz: p.biz }], bizId).length).reduce((s, p) => s + 0, 0);
+  const paidMonth = store.payments.filter(p => bizId === 'all' || p.biz === bizId).reduce((s, p) => s + p.amount, 0);
 
   return sh('div', { className: 'content-inner fade-up' },
     sh(PageHead, { bizId, title: 'Invoices', sub: 'Create, send and collect — with Stripe payment links',
@@ -297,10 +297,13 @@ function NewInvoiceModal({ bizId, store, onClose }) {
       sh('div', { className: 'mono', key: 't', style: { fontSize: 13, fontWeight: 600 } }, 'Total ' + sMoney(sub + gst, 2)),
       sh('div', { className: 'spacer', key: 's' }),
       sh(SButton, { key: 'd', variant: 'ghost', onClick: onClose }, 'Save draft'),
-      sh(SButton, { key: 'c', variant: 'primary', icon: 'send', onClick: () => { store.addInvoice(biz, cust, items); onClose(); sToast('Invoice created', 'invoice'); } }, 'Create & send')] },
+      sh(SButton, { key: 'c', variant: 'primary', icon: 'send', onClick: () => {
+        if (!items.some(x => x.desc)) { sToast('Add at least one line item', 'alert'); return; }
+        store.addInvoice(biz, cust, items); onClose(); sToast('Invoice created', 'invoice');
+      } }, 'Create & send')] },
     sh('div', { className: 'row', style: { gap: 12, marginBottom: 14 } },
       sh('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sh('label', null, 'Business'),
-        sh('select', { value: biz, onChange: e => { setBiz(e.target.value); const f = DB.customers.find(c => c.biz === e.target.value); setCust(f && f.id); } },
+        sh('select', { value: biz, onChange: e => { setBiz(e.target.value); const f = DB.customers.find(c => c.biz === e.target.value); setCust(f ? f.id : null); } },
           DB.businesses.map(b => sh('option', { key: b.id, value: b.id }, b.name)))),
       sh('div', { className: 'form-row', style: { flex: 1, marginBottom: 0 } }, sh('label', null, 'Customer'),
         sh('select', { value: cust, onChange: e => setCust(e.target.value) }, custs.map(c => sh('option', { key: c.id, value: c.id }, c.name))))),

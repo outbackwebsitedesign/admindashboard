@@ -64,8 +64,8 @@ function App() {
     markPaid: async (id) => {
       const updated = invoices.map(i => i.id === id ? { ...i, status: 'paid', amountPaid: i.total, paid: AF.iso(ADB.TODAY) } : i);
       setInvoices(updated);
-      await ADB.db.update('invoices', id, updated.find(i => i.id === id));
-      const i = invoices.find(x => x.id === id);
+      const i = updated.find(x => x.id === id);
+      await ADB.db.update('invoices', id, i);
       if (i) {
         const payment = { id: 'PAY-' + (5200 + payments.length), biz: i.biz, invoice: i.id, cust: i.cust, date: AF.iso(ADB.TODAY), amount: i.total, method: 'stripe', fee: +(i.total * 0.0175 + 0.3).toFixed(2), status: 'settled' };
         setPayments(p => [payment, ...p]);
