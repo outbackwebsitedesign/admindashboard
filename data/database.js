@@ -103,6 +103,10 @@ window.DB = {
   timeLogs: [],
   emails: [],
   documents: [],
+  users: [],
+  team: [],
+  integrations: [],
+  currentUser: null,
   series: { all: [] },
   catBreakdown: () => [],
   fmt: FMT,
@@ -151,7 +155,7 @@ function buildSeries(businesses, invoices, expenses) {
 // Load initial data from API, then update window.DB and signal ready
 window.DBReady = (async function loadInitialData() {
   try {
-    const [businesses, customers, invoices, payments, expenses, appointments, tasks, timeLogs, emails, documents] = await Promise.all([
+    const [businesses, customers, invoices, payments, expenses, appointments, tasks, timeLogs, emails, documents, users, team, integrations] = await Promise.all([
       Database.getAll('businesses'),
       Database.getAll('customers'),
       Database.getAll('invoices'),
@@ -161,7 +165,10 @@ window.DBReady = (async function loadInitialData() {
       Database.getAll('tasks'),
       Database.getAll('timeLogs'),
       Database.getAll('emails'),
-      Database.getAll('documents')
+      Database.getAll('documents'),
+      Database.getAll('users'),
+      Database.getAll('team'),
+      Database.getAll('integrations'),
     ]);
 
     Object.assign(window.DB, {
@@ -176,6 +183,10 @@ window.DBReady = (async function loadInitialData() {
       timeLogs,
       emails,
       documents,
+      users,
+      team,
+      integrations,
+      currentUser: users[0] || null,
       series: buildSeries(businesses, invoices, expenses),
       catBreakdown: (biz) => {
         const map = {};

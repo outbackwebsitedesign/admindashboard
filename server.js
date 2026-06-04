@@ -150,8 +150,51 @@ async function initDatabase() {
         date TEXT,
         by TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        role TEXT,
+        practice TEXT,
+        phone TEXT,
+        photo TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS team (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        role TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS integrations (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        desc TEXT,
+        icon TEXT,
+        color TEXT,
+        connected INTEGER
+      );
     `);
-    
+
+    // Seed default user
+    db.run(`INSERT INTO users (id, name, email, role, practice, phone) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['user-1', 'Practice Owner', 'owner@mypractice.com.au', 'Bookkeeper · Admin', 'My Practice', '']);
+
+    // Seed integrations
+    const integrations = [
+      ['int-stripe', 'Stripe', 'Payment links & checkout', 'zap', '#635bff', 0],
+      ['int-xero', 'Xero', 'Accounting sync', 'book', '#13b5ea', 0],
+      ['int-gmail', 'Gmail', 'Email integration', 'mail', '#ea4335', 0],
+      ['int-gcal', 'Google Calendar', 'Appointment sync', 'calendar', '#4285f4', 0],
+      ['int-auspost', 'Australia Post', 'Postal / document mailing', 'send', '#dc1928', 0],
+    ];
+    integrations.forEach(([id, name, desc, icon, color, connected]) => {
+      db.run(`INSERT INTO integrations (id, name, desc, icon, color, connected) VALUES (?, ?, ?, ?, ?, ?)`,
+        [id, name, desc, icon, color, connected]);
+    });
+
     saveDatabase();
     console.log('SQLite database created at:', DB_PATH);
   }
@@ -176,7 +219,7 @@ const MIME_TYPES = {
   '.png': 'image/png',
 };
 
-const ALLOWED_TABLES = new Set(['businesses','customers','invoices','payments','expenses','appointments','tasks','timeLogs','emails','documents']);
+const ALLOWED_TABLES = new Set(['businesses','customers','invoices','payments','expenses','appointments','tasks','timeLogs','emails','documents','users','team','integrations']);
 
 // API handler
 function handleAPI(req, res, pathname) {
