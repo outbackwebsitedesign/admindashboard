@@ -1,10 +1,8 @@
 /* ============================================================
    LEDGER — Database initialization and management
-   Uses localStorage for persistent data storage
+   Uses SQLite for persistent data storage
    Auto-creates blank database structures on first run
    ============================================================ */
-
-const DB_KEY = 'ledger_admin_dashboard';
 
 /* ---- Formatters ---- */
 const fmtAUD = (n, opts = {}) => {
@@ -38,138 +36,121 @@ const relDays = (d) => {
   return `in ${diff}d`;
 };
 
-/* ---- Database Schema ---- */
-const createBlankDatabase = () => ({
-  businesses: [],
-  customers: [],
-  invoices: [],
-  payments: [],
-  expenses: [],
-  appointments: [],
-  tasks: [],
-  timeLogs: [],
-  emails: [],
-  documents: [],
-  settings: {
-    currency: 'AUD',
-    gstRate: 0.10,
-    locale: 'en-AU'
-  }
-});
-
-/* ---- Database Operations ---- */
+/* ---- Database Operations (API-based) ---- */
 const Database = {
-  // Initialize database - creates blank structure if doesn't exist
-  init: () => {
-    const existing = localStorage.getItem(DB_KEY);
-    if (!existing) {
-      const blankDB = createBlankDatabase();
-      localStorage.setItem(DB_KEY, JSON.stringify(blankDB));
-      return blankDB;
+  API_BASE: '/api/db',
+
+  async request(endpoint, method = 'GET', data = null) {
+    try {
+      const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' }
+      };
+      if (data) options.body = JSON.stringify(data);
+      
+      const response = await fetch(this.API_BASE + endpoint, options);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Database API error:', error);
+      return null;
     }
-    return JSON.parse(existing);
   },
 
-  // Get entire database
-  get: () => {
-    const data = localStorage.getItem(DB_KEY);
-    return data ? JSON.parse(data) : Database.init();
+  async getAll(collection) {
+    const result = await this.request(`/${collection}`);
+    return result || [];
   },
 
-  // Save entire database
-  save: (data) => {
-    localStorage.setItem(DB_KEY, JSON.stringify(data));
+  async getById(collection, id) {
+    const result = await this.request(`/${collection}/${id}`);
+    return result;
   },
 
-  // CRUD operations for each collection
-  add: (collection, item) => {
-    const db = Database.get();
-    if (!db[collection]) db[collection] = [];
-    db[collection].push(item);
-    Database.save(db);
-    return item;
+  async add(collection, item) {
+    return await this.request(`/${collection}`, 'POST', item);
   },
 
-  update: (collection, id, updates) => {
-    const db = Database.get();
-    if (!db[collection]) return null;
-    const index = db[collection].findIndex(item => item.id === id);
-    if (index === -1) return null;
-    db[collection][index] = { ...db[collection][index], ...updates };
-    Database.save(db);
-    return db[collection][index];
+  async update(collection, id, updates) {
+    return await this.request(`/${collection}/${id}`, 'PUT', updates);
   },
 
-  delete: (collection, id) => {
-    const db = Database.get();
-    if (!db[collection]) return false;
-    const initialLength = db[collection].length;
-    db[collection] = db[collection].filter(item => item.id !== id);
-    Database.save(db);
-    return db[collection].length < initialLength;
+  async delete(collection, id) {
+    return await this.request(`/${collection}/${id}`, 'DELETE');
   },
 
-  getById: (collection, id) => {
-    const db = Database.get();
-    if (!db[collection]) return null;
-    return db[collection].find(item => item.id === id) || null;
-  },
-
-  getAll: (collection) => {
-    const db = Database.get();
-    return db[collection] || [];
-  },
-
-  // Filter by business ID
-  getByBiz: (collection, bizId) => {
-    const items = Database.getAll(collection);
+  async getByBiz(collection, bizId) {
+    const items = await this.getAll(collection);
     return bizId === 'all' ? items : items.filter(item => item.biz === bizId);
-  },
-
-  // Reset database to blank state
-  reset: () => {
-    const blankDB = createBlankDatabase();
-    localStorage.setItem(DB_KEY, JSON.stringify(blankDB));
-    return blankDB;
-  },
-
-  // Check if database has any data
-  isEmpty: () => {
-    const db = Database.get();
-    return db.businesses.length === 0 && 
-           db.customers.length === 0 && 
-           db.invoices.length === 0;
   }
 };
 
 /* ---- Export to window ---- */
 window.Database = Database;
-window.DB = {
-  TODAY: new Date(),
-  businesses: Database.getAll('businesses'),
-  customers: Database.getAll('customers'),
-  invoices: Database.getAll('invoices'),
-  payments: Database.getAll('payments'),
-  expenses: Database.getAll('expenses'),
-  appointments: Database.getAll('appointments'),
-  tasks: Database.getAll('tasks'),
-  timeLogs: Database.getAll('timeLogs'),
-  emails: Database.getAll('emails'),
-  documents: Database.getAll('documents'),
-  series: { all: [] }, // Placeholder for chart data
-  catBreakdown: (biz) => {
-    const expenses = Database.getByBiz('expenses', biz);
-    const map = {};
-    expenses.forEach(e => { map[e.cat] = (map[e.cat] || 0) + e.amount; });
-    return Object.entries(map).map(([cat, amount]) => ({ cat, amount })).sort((a, b) => b.amount - a.amount);
-  },
-  fmt: { fmtAUD, fmtK, fmtNum, fmtDate, fmtDateShort, fmtTime, relDays, daysFromToday, iso, addDays, MONTHS, DOW },
-  biz: (id) => Database.getById('businesses', id),
-  cust: (id) => Database.getById('customers', id),
-  byBiz: (arr, bizId) => bizId === 'all' ? arr : arr.filter(x => x.biz === bizId),
-  // Database operations
-  db: Database
-};
 
-// Initialize database on load
-Database.init();
+// Load initial data from API
+async function loadInitialData() {
+  try {
+    const [businesses, customers, invoices, payments, expenses, appointments, tasks, timeLogs, emails, documents] = await Promise.all([
+      Database.getAll('businesses'),
+      Database.getAll('customers'),
+      Database.getAll('invoices'),
+      Database.getAll('payments'),
+      Database.getAll('expenses'),
+      Database.getAll('appointments'),
+      Database.getAll('tasks'),
+      Database.getAll('timeLogs'),
+      Database.getAll('emails'),
+      Database.getAll('documents')
+    ]);
+
+    window.DB = {
+      TODAY: new Date(),
+      businesses,
+      customers,
+      invoices,
+      payments,
+      expenses,
+      appointments,
+      tasks,
+      timeLogs,
+      emails,
+      documents,
+      series: { all: [] },
+      catBreakdown: (biz) => {
+        const map = {};
+        expenses.filter(e => e.biz === biz).forEach(e => { map[e.cat] = (map[e.cat] || 0) + e.amount; });
+        return Object.entries(map).map(([cat, amount]) => ({ cat, amount })).sort((a, b) => b.amount - a.amount);
+      },
+      fmt: { fmtAUD, fmtK, fmtNum, fmtDate, fmtDateShort, fmtTime, relDays, daysFromToday, iso, addDays, MONTHS, DOW },
+      biz: (id) => businesses.find(b => b.id === id),
+      cust: (id) => customers.find(c => c.id === id),
+      byBiz: (arr, bizId) => bizId === 'all' ? arr : arr.filter(x => x.biz === bizId),
+      db: Database
+    };
+  } catch (error) {
+    console.error('Failed to load initial data:', error);
+    window.DB = {
+      TODAY: new Date(),
+      businesses: [],
+      customers: [],
+      invoices: [],
+      payments: [],
+      expenses: [],
+      appointments: [],
+      tasks: [],
+      timeLogs: [],
+      emails: [],
+      documents: [],
+      series: { all: [] },
+      catBreakdown: () => [],
+      fmt: { fmtAUD, fmtK, fmtNum, fmtDate, fmtDateShort, fmtTime, relDays, daysFromToday, iso, addDays, MONTHS, DOW },
+      biz: () => null,
+      cust: () => null,
+      byBiz: (arr, bizId) => bizId === 'all' ? arr : arr.filter(x => x.biz === bizId),
+      db: Database
+    };
+  }
+}
+
+loadInitialData();

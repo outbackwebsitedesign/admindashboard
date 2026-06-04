@@ -18,6 +18,9 @@ PORT=9000
 echo "==> Pulling latest from main..."
 git -C "$APP_DIR" pull origin main
 
+echo "==> Installing dependencies..."
+"$NPM_BIN" --prefix "$APP_DIR" install
+
 echo "==> Starting HTTP server on port ${PORT}..."
 
 # Always recreate systemd service to ensure it's up to date

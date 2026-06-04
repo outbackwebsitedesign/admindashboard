@@ -54,32 +54,32 @@ function App() {
 
   const store = {
     invoices, payments,
-    createLink: (id) => {
+    createLink: async (id) => {
       const updated = invoices.map(i => i.id === id
         ? { ...i, stripeLink: 'https://buy.stripe.com/plink_' + Math.random().toString(36).slice(2, 12), status: i.status === 'draft' ? 'sent' : i.status }
         : i);
       setInvoices(updated);
-      ADB.db.update('invoices', id, updated.find(i => i.id === id));
+      await ADB.db.update('invoices', id, updated.find(i => i.id === id));
     },
-    markPaid: (id) => {
+    markPaid: async (id) => {
       const updated = invoices.map(i => i.id === id ? { ...i, status: 'paid', amountPaid: i.total, paid: AF.iso(ADB.TODAY) } : i);
       setInvoices(updated);
-      ADB.db.update('invoices', id, updated.find(i => i.id === id));
+      await ADB.db.update('invoices', id, updated.find(i => i.id === id));
       const i = invoices.find(x => x.id === id);
       if (i) {
         const payment = { id: 'PAY-' + (5200 + payments.length), biz: i.biz, invoice: i.id, cust: i.cust, date: AF.iso(ADB.TODAY), amount: i.total, method: 'stripe', fee: +(i.total * 0.0175 + 0.3).toFixed(2), status: 'settled' };
         setPayments(p => [payment, ...p]);
-        ADB.db.add('payments', payment);
+        await ADB.db.add('payments', payment);
       }
     },
-    addInvoice: (biz, cust, items) => {
+    addInvoice: async (biz, cust, items) => {
       const its = items.filter(x => x.desc).map(x => ({ desc: x.desc, qty: +x.qty || 0, unit: +x.unit || 0, amount: +((+x.qty || 0) * (+x.unit || 0)).toFixed(2) }));
       const subtotal = +its.reduce((s, x) => s + x.amount, 0).toFixed(2);
       const gst = +(subtotal * 0.1).toFixed(2);
       const id = nextInvoiceId(biz, invoices);
       const nv = { id, biz, cust, issued: AF.iso(ADB.TODAY), due: AF.iso(AF.addDays(ADB.TODAY, 14)), status: 'sent', items: its, subtotal, gst, total: +(subtotal + gst).toFixed(2), amountPaid: 0 };
       setInvoices(inv => [nv, ...inv]);
-      ADB.db.add('invoices', nv);
+      await ADB.db.add('invoices', nv);
     },
   };
 

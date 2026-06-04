@@ -1,0 +1,12 @@
+{
+  "name": "admindashboard",
+  "version": "1.0.0",
+  "description": "Admin Dashboard with SQLite database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.0.0"
+  }
+}
