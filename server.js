@@ -1,153 +1,169 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
 const url = require('url');
 
 const PORT = 9000;
 const DB_PATH = path.join(__dirname, 'data', 'admindashboard.db');
 
+let db = null;
+
 // Initialize SQLite database
-function initDatabase() {
-  const db = new Database(DB_PATH);
+async function initDatabase() {
+  const SQL = await initSqlJs();
   
-  // Create tables
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS businesses (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      type TEXT,
-      abbr TEXT,
-      color TEXT,
-      owner TEXT,
-      abn TEXT,
-      email TEXT,
-      phone TEXT,
-      address TEXT,
-      since TEXT,
-      stripe INTEGER,
-      gst INTEGER,
-      ytdIncome REAL,
-      ytdExpense REAL,
-      cash REAL
-    );
+  // Load existing database or create new one
+  if (fs.existsSync(DB_PATH)) {
+    const fileBuffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(fileBuffer);
+    console.log('SQLite database loaded from:', DB_PATH);
+  } else {
+    db = new SQL.Database();
     
-    CREATE TABLE IF NOT EXISTS customers (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      name TEXT,
-      contact TEXT,
-      email TEXT,
-      phone TEXT,
-      type TEXT,
-      city TEXT,
-      since TEXT
-    );
+    // Create tables
+    db.run(`
+      CREATE TABLE IF NOT EXISTS businesses (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        type TEXT,
+        abbr TEXT,
+        color TEXT,
+        owner TEXT,
+        abn TEXT,
+        email TEXT,
+        phone TEXT,
+        address TEXT,
+        since TEXT,
+        stripe INTEGER,
+        gst INTEGER,
+        ytdIncome REAL,
+        ytdExpense REAL,
+        cash REAL
+      );
+      
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        name TEXT,
+        contact TEXT,
+        email TEXT,
+        phone TEXT,
+        type TEXT,
+        city TEXT,
+        since TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS invoices (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        cust TEXT,
+        issued TEXT,
+        due TEXT,
+        status TEXT,
+        stripe TEXT,
+        items TEXT,
+        subtotal REAL,
+        gst REAL,
+        total REAL,
+        amountPaid REAL,
+        paid TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS payments (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        invoice TEXT,
+        cust TEXT,
+        date TEXT,
+        amount REAL,
+        method TEXT,
+        fee REAL,
+        status TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS expenses (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        date TEXT,
+        vendor TEXT,
+        cat TEXT,
+        amount REAL,
+        gst REAL,
+        method TEXT,
+        status TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS appointments (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        start TEXT,
+        durMin INTEGER,
+        title TEXT,
+        cust TEXT,
+        kind TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        due TEXT,
+        title TEXT,
+        prio TEXT,
+        done INTEGER,
+        tag TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS timeLogs (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        date TEXT,
+        who TEXT,
+        cust TEXT,
+        hrs REAL,
+        rate REAL,
+        note TEXT,
+        billable INTEGER,
+        billed INTEGER
+      );
+      
+      CREATE TABLE IF NOT EXISTS emails (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        thread TEXT,
+        from TEXT,
+        cust TEXT,
+        subject TEXT,
+        preview TEXT,
+        ago TEXT,
+        unread INTEGER,
+        dir TEXT,
+        tag TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        biz TEXT,
+        name TEXT,
+        kind TEXT,
+        size TEXT,
+        date TEXT,
+        by TEXT
+      );
+    `);
     
-    CREATE TABLE IF NOT EXISTS invoices (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      cust TEXT,
-      issued TEXT,
-      due TEXT,
-      status TEXT,
-      stripe TEXT,
-      items TEXT,
-      subtotal REAL,
-      gst REAL,
-      total REAL,
-      amountPaid REAL,
-      paid TEXT
-    );
-    
-    CREATE TABLE IF NOT EXISTS payments (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      invoice TEXT,
-      cust TEXT,
-      date TEXT,
-      amount REAL,
-      method TEXT,
-      fee REAL,
-      status TEXT
-    );
-    
-    CREATE TABLE IF NOT EXISTS expenses (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      date TEXT,
-      vendor TEXT,
-      cat TEXT,
-      amount REAL,
-      gst REAL,
-      method TEXT,
-      status TEXT
-    );
-    
-    CREATE TABLE IF NOT EXISTS appointments (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      start TEXT,
-      durMin INTEGER,
-      title TEXT,
-      cust TEXT,
-      kind TEXT
-    );
-    
-    CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      due TEXT,
-      title TEXT,
-      prio TEXT,
-      done INTEGER,
-      tag TEXT
-    );
-    
-    CREATE TABLE IF NOT EXISTS timeLogs (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      date TEXT,
-      who TEXT,
-      cust TEXT,
-      hrs REAL,
-      rate REAL,
-      note TEXT,
-      billable INTEGER,
-      billed INTEGER
-    );
-    
-    CREATE TABLE IF NOT EXISTS emails (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      thread TEXT,
-      from TEXT,
-      cust TEXT,
-      subject TEXT,
-      preview TEXT,
-      ago TEXT,
-      unread INTEGER,
-      dir TEXT,
-      tag TEXT
-    );
-    
-    CREATE TABLE IF NOT EXISTS documents (
-      id TEXT PRIMARY KEY,
-      biz TEXT,
-      name TEXT,
-      kind TEXT,
-      size TEXT,
-      date TEXT,
-      by TEXT
-    );
-  `);
-  
-  db.close();
-  console.log('SQLite database initialized at:', DB_PATH);
+    saveDatabase();
+    console.log('SQLite database created at:', DB_PATH);
+  }
 }
 
-// Initialize database on startup
-initDatabase();
+function saveDatabase() {
+  if (db) {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+  }
+}
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -159,7 +175,11 @@ const MIME_TYPES = {
 
 // API handler
 function handleAPI(req, res, pathname) {
-  const db = new Database(DB_PATH);
+  if (!db) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Database not initialized' }));
+    return;
+  }
   
   try {
     const urlParts = pathname.split('/').filter(Boolean);
@@ -171,13 +191,15 @@ function handleAPI(req, res, pathname) {
     if (req.method === 'GET') {
       if (id) {
         const stmt = db.prepare(`SELECT * FROM ${collection} WHERE id = ?`);
-        const row = stmt.get(id);
-        res.end(JSON.stringify(row || null));
+        stmt.bind([id]);
+        const result = stmt.getAsObject();
+        const row = result.length > 0 ? result[0] : null;
+        if (row && row.items) row.items = JSON.parse(row.items);
+        res.end(JSON.stringify(row));
       } else {
         const stmt = db.prepare(`SELECT * FROM ${collection}`);
-        const rows = stmt.all();
-        // Parse JSON columns
-        const parsedRows = rows.map(row => {
+        const result = stmt.getAsObject();
+        const parsedRows = result.map(row => {
           if (row.items) row.items = JSON.parse(row.items);
           return row;
         });
@@ -192,8 +214,8 @@ function handleAPI(req, res, pathname) {
         const placeholders = Object.keys(data).map(() => '?').join(', ');
         const values = Object.values(data).map(v => typeof v === 'object' ? JSON.stringify(v) : v);
         
-        const stmt = db.prepare(`INSERT INTO ${collection} (${columns}) VALUES (${placeholders})`);
-        const result = stmt.run(...values);
+        db.run(`INSERT INTO ${collection} (${columns}) VALUES (${placeholders})`, values);
+        saveDatabase();
         res.end(JSON.stringify({ success: true, id: data.id }));
       });
     } else if (req.method === 'PUT') {
@@ -205,21 +227,19 @@ function handleAPI(req, res, pathname) {
         const values = Object.values(data).map(v => typeof v === 'object' ? JSON.stringify(v) : v);
         values.push(id);
         
-        const stmt = db.prepare(`UPDATE ${collection} SET ${updates} WHERE id = ?`);
-        const result = stmt.run(...values);
+        db.run(`UPDATE ${collection} SET ${updates} WHERE id = ?`, values);
+        saveDatabase();
         res.end(JSON.stringify({ success: true }));
       });
     } else if (req.method === 'DELETE') {
-      const stmt = db.prepare(`DELETE FROM ${collection} WHERE id = ?`);
-      const result = stmt.run(id);
+      db.run(`DELETE FROM ${collection} WHERE id = ?`, [id]);
+      saveDatabase();
       res.end(JSON.stringify({ success: true }));
     }
   } catch (error) {
     console.error('API error:', error);
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: error.message }));
-  } finally {
-    db.close();
   }
 }
 
@@ -255,6 +275,12 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running at http://0.0.0.0:${PORT}/`);
+// Initialize database and start server
+initDatabase().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running at http://0.0.0.0:${PORT}/`);
+  });
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });
