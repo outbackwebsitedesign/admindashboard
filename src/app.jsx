@@ -166,10 +166,10 @@ function App() {
 
       // footer
       ah('div', { className: 'side-foot' },
-        ah(AAvatar, { name: 'Sam Okeke', size: 30 }),
+        ah(AAvatar, { name: ADB.currentUser ? ADB.currentUser.name : '?', size: 30 }),
         ah('div', { className: 'who' },
-          ah('div', { className: 'who-name' }, 'Sam Okeke'),
-          ah('div', { className: 'who-role' }, 'Okeke Bookkeeping')),
+          ah('div', { className: 'who-name' }, ADB.currentUser ? ADB.currentUser.name : '—'),
+          ah('div', { className: 'who-role' }, ADB.currentUser ? ADB.currentUser.practice : '—')),
         ah('button', { className: 'icon-btn', style: { width: 30, height: 30, background: 'transparent', border: 'none', color: 'var(--side-muted)' }, onClick: () => go('settings') }, ah(AIcon, { name: 'settings', size: 16 })))),
 
     // ===== MAIN =====

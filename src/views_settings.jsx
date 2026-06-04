@@ -64,13 +64,10 @@ function BusinessProfile({ bizId }) {
 function IntegrationsSettings({ bizId }) {
   const DB = window.DB;
   const b = bizId !== 'all' ? DB.biz(bizId) : null;
-  const items = [
-    { name: 'Stripe', desc: 'Payment links & checkout', icon: 'zap', color: '#635bff', on: b ? b.stripe : true },
-    { name: 'Xero', desc: 'Accounting sync', icon: 'book', color: '#13b5ea', on: true },
-    { name: 'Gmail', desc: 'Email integration', icon: 'mail', color: '#ea4335', on: true },
-    { name: 'Google Calendar', desc: 'Appointment sync', icon: 'calendar', color: '#4285f4', on: false },
-    { name: 'Australia Post', desc: 'Postal / document mailing', icon: 'send', color: '#dc1928', on: false },
-  ];
+  const items = (DB.integrations || []).map(it => ({
+    ...it,
+    on: it.name === 'Stripe' && b ? !!b.stripe : !!it.connected,
+  }));
   return sth(StCard, { title: 'Integrations', sub: b ? b.name : 'Workspace-wide' },
     sth('div', { className: 'col', style: { gap: 10 } },
       items.map(it => sth('div', { key: it.name, className: 'row', style: { gap: 12, padding: '12px', border: '1px solid var(--line)', borderRadius: 'var(--r)' } },
@@ -111,28 +108,30 @@ function DocsSettings({ bizId }) {
 }
 
 function AccountSettings() {
+  const DB = window.DB;
+  const u = DB.currentUser || {};
   return sth('div', { className: 'col', style: { gap: 16 } },
     sth(StCard, { title: 'My account' },
       sth('div', { className: 'row', style: { gap: 14, marginBottom: 16 } },
-        sth(StAvatar, { name: 'Sam Okeke', size: 56 }),
-        sth('div', null, sth('div', { style: { fontSize: 15, fontWeight: 600 } }, 'Sam Okeke'), sth('div', { className: 'muted', style: { fontSize: 12 } }, 'Bookkeeper · Admin'), sth('div', { className: 'lk', style: { fontSize: 12, marginTop: 4 } }, 'Change photo'))),
-      sth('div', { className: 'row', style: { gap: 12, marginBottom: 14 } }, row2('Full name', 'Sam Okeke'), row2('Email', 'sam@okekebookkeeping.com.au')),
-      sth('div', { className: 'row', style: { gap: 12 } }, row2('Practice name', 'Okeke Bookkeeping'), row2('Phone', '0412 880 553', true)),
+        sth(StAvatar, { name: u.name || '?', size: 56 }),
+        sth('div', null, sth('div', { style: { fontSize: 15, fontWeight: 600 } }, u.name || '—'), sth('div', { className: 'muted', style: { fontSize: 12 } }, u.role || ''), sth('div', { className: 'lk', style: { fontSize: 12, marginTop: 4 } }, 'Change photo'))),
+      sth('div', { className: 'row', style: { gap: 12, marginBottom: 14 } }, row2('Full name', u.name || ''), row2('Email', u.email || '')),
+      sth('div', { className: 'row', style: { gap: 12 } }, row2('Practice name', u.practice || ''), row2('Phone', u.phone || '', true)),
       sth('div', { className: 'row', style: { marginTop: 16, gap: 8 } }, sth(StButton, { variant: 'primary' }, 'Save'), sth(StButton, { variant: 'ghost' }, 'Cancel'))));
 }
 
 function TeamSettings() {
-  const team = [
-    { name: 'Sam Okeke', role: 'Owner · Admin', email: 'sam@okekebookkeeping.com.au' },
-    { name: 'Lara Quinn', role: 'Bookkeeper', email: 'lara@okekebookkeeping.com.au' },
-    { name: 'Devon Mills', role: 'Assistant (view only)', email: 'devon@okekebookkeeping.com.au' },
-  ];
-  return sth(StCard, { title: 'Team', sub: team.length + ' members', right: sth(StButton, { size: 'sm', variant: 'primary', icon: 'plus' }, 'Invite') },
-    sth('div', { className: 'col', style: { gap: 10 } },
-      team.map(m => sth('div', { key: m.name, className: 'row', style: { gap: 12, padding: '11px 12px', border: '1px solid var(--line)', borderRadius: 'var(--r)' } },
-        sth(StAvatar, { name: m.name, size: 38 }),
-        sth('div', { style: { flex: 1 } }, sth('div', { style: { fontSize: 13, fontWeight: 600 } }, m.name), sth('div', { className: 'muted', style: { fontSize: 11.5 } }, m.email)),
-        sth(StBadge, { className: 'soft' }, m.role)))));
+  const DB = window.DB;
+  const team = DB.team || [];
+  const label = team.length === 0 ? 'No members yet' : team.length + ' member' + (team.length === 1 ? '' : 's');
+  return sth(StCard, { title: 'Team', sub: label, right: sth(StButton, { size: 'sm', variant: 'primary', icon: 'plus' }, 'Invite') },
+    team.length === 0
+      ? sth('div', { className: 'muted', style: { fontSize: 13, padding: '12px 0' } }, 'No team members yet. Invite someone to get started.')
+      : sth('div', { className: 'col', style: { gap: 10 } },
+          team.map(m => sth('div', { key: m.id, className: 'row', style: { gap: 12, padding: '11px 12px', border: '1px solid var(--line)', borderRadius: 'var(--r)' } },
+            sth(StAvatar, { name: m.name, size: 38 }),
+            sth('div', { style: { flex: 1 } }, sth('div', { style: { fontSize: 13, fontWeight: 600 } }, m.name), sth('div', { className: 'muted', style: { fontSize: 11.5 } }, m.email)),
+            sth(StBadge, { className: 'soft' }, m.role)))));
 }
 
 Object.assign(window, { SettingsView });
