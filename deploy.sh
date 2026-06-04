@@ -30,7 +30,7 @@ After=network.target
 [Service]
 Type=simple
 User=$(whoami)
-WorkingDirectory=${APP_DIR}/src
+WorkingDirectory=${APP_DIR}
 ExecStart=/usr/bin/python3 -m http.server ${PORT} --bind 0.0.0.0
 Restart=on-failure
 RestartSec=5
