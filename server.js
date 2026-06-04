@@ -18,27 +18,40 @@ async function initDatabase() {
     const fileBuffer = fs.readFileSync(DB_PATH);
     db = new SQL.Database(fileBuffer);
     console.log('SQLite database loaded from:', DB_PATH);
-    // Migrate existing databases: add new columns if missing
+    let migrated = false;
+
+    // Add missing columns to businesses
     const existingCols = new Set(
       db.exec('PRAGMA table_info(businesses)')[0]?.values.map(r => r[1]) || []
     );
-    const migrations = [
-      ['invoicePrefix', 'TEXT'],
-      ['gstRate', 'REAL'],
-      ['paymentTermsDays', 'INTEGER'],
-      ['stripeFeeRate', 'REAL'],
-      ['stripeFeeFlat', 'REAL'],
-    ];
-    let migrated = false;
-    migrations.forEach(([col, type]) => {
+    [['invoicePrefix', 'TEXT'], ['gstRate', 'REAL'], ['paymentTermsDays', 'INTEGER'],
+     ['stripeFeeRate', 'REAL'], ['stripeFeeFlat', 'REAL']].forEach(([col, type]) => {
       if (!existingCols.has(col)) {
         db.run(`ALTER TABLE businesses ADD COLUMN ${col} ${type}`);
         migrated = true;
       }
     });
+
+    // Create missing tables (added after initial release)
+    const existingTables = new Set(
+      db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values.map(r => r[0]) || []
+    );
+    if (!existingTables.has('users')) {
+      db.run(`CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT, email TEXT, role TEXT, practice TEXT, phone TEXT, photo TEXT)`);
+      migrated = true;
+    }
+    if (!existingTables.has('team')) {
+      db.run(`CREATE TABLE team (id TEXT PRIMARY KEY, name TEXT, email TEXT, role TEXT)`);
+      migrated = true;
+    }
+    if (!existingTables.has('integrations')) {
+      db.run(`CREATE TABLE integrations (id TEXT PRIMARY KEY, name TEXT, desc TEXT, icon TEXT, color TEXT, connected INTEGER)`);
+      migrated = true;
+    }
+
     if (migrated) {
       saveDatabase();
-      console.log('Migrated businesses table with new settings columns');
+      console.log('Database migrated successfully');
     }
   } else {
     db = new SQL.Database();
