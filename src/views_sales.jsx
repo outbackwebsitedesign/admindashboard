@@ -267,16 +267,21 @@ function totalRow(label, val, bold, color) {
 }
 
 /* ---- Email-link compose modal ---- */
+function invoiceEmailSubject(b, inv) {
+  return b.name + ' — Invoice ' + inv.id + ' (' + sMoney(inv.total, 2) + ')';
+}
+function invoiceEmailBody(c, inv, link, b) {
+  return `Hi ${c.contact.split(' ')[0]},\n\nPlease find invoice ${inv.id} for ${sMoney(inv.total, 2)} (incl. GST), due ${SF.fmtDate(inv.due)}.\n\nYou can pay securely here:\n${link}\n\nThanks,\n${b.owner}\n${b.name}`;
+}
 function EmailLinkModal({ inv, c, b, link, onClose }) {
   return sh(SModal, { title: 'Email payment link', sub: 'To ' + c.email, onClose, width: 560,
     footer: [sh('div', { className: 'spacer', key: 's' }),
       sh(SButton, { key: 'c', variant: 'ghost', onClick: onClose }, 'Cancel'),
       sh(SButton, { key: 'x', variant: 'primary', icon: 'send', onClick: () => { onClose(); sToast('Email sent to ' + c.contact, 'send'); } }, 'Send email')] },
     sh('div', { className: 'form-row' }, sh('label', null, 'To'), sh('input', { className: 'input', defaultValue: c.email })),
-    sh('div', { className: 'form-row' }, sh('label', null, 'Subject'), sh('input', { className: 'input', defaultValue: b.name + ' — Invoice ' + inv.id + ' (' + sMoney(inv.total, 2) + ')' })),
+    sh('div', { className: 'form-row' }, sh('label', null, 'Subject'), sh('input', { className: 'input', defaultValue: invoiceEmailSubject(b, inv) })),
     sh('div', { className: 'form-row' }, sh('label', null, 'Message'),
-      sh('textarea', { className: 'input', rows: 6, defaultValue:
-        `Hi ${c.contact.split(' ')[0]},\n\nPlease find invoice ${inv.id} for ${sMoney(inv.total, 2)} (incl. GST), due ${SF.fmtDate(inv.due)}.\n\nYou can pay securely here:\n${link}\n\nThanks,\n${b.owner}\n${b.name}` })),
+      sh('textarea', { className: 'input', rows: 6, defaultValue: invoiceEmailBody(c, inv, link, b) })),
     sh('div', { className: 'linkbox' }, sh(SIcon, { name: 'link', size: 14, style: { color: 'var(--purple)' } }), sh('span', { className: 'url' }, link)));
 }
 
@@ -345,8 +350,8 @@ function PaymentsView({ bizId, store }) {
     sh(SCard, { bodyClass: 'tight' },
       sh('div', { className: 'tbl-toolbar' },
         sh(SSeg, { value: method, onChange: setMethod, options: [
-          { value: 'all', label: 'All', count: counts.all }, { value: 'stripe', label: 'Stripe', count: counts.stripe },
-          { value: 'bank', label: 'Bank', count: counts.bank }, { value: 'cash', label: 'Cash', count: counts.cash }] })),
+          { value: 'all', label: 'All', count: counts.all },
+          ...Object.entries(methodMeta).map(([k, m]) => ({ value: k, label: m.l, count: counts[k] }))] })),
       sh('div', { className: 'tbl-wrap' }, sh('table', { className: 'tbl' },
         sh('thead', null, sh('tr', null,
           sh('th', null, 'Receipt'), bizId === 'all' && sh('th', null, 'Business'),

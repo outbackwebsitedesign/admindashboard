@@ -95,7 +95,7 @@ function TasksView({ bizId, store }) {
   const openCount = tasks.filter(t => !t.done).length;
   const overdue = tasks.filter(t => !t.done && OF.daysFromToday(t.due) < 0).length;
 
-  const prioColor = (p) => p === 'high' ? 'var(--neg)' : p === 'med' ? 'var(--warn)' : 'var(--line-strong)';
+  const prioColor = (p) => window.PRIORITY_COLOR[p] || 'var(--line-strong)';
 
   return oh('div', { className: 'content-inner fade-up' },
     oh(OPageHead, { bizId, title: 'Tasks & reminders', sub: openCount + ' open · ' + overdue + ' overdue',
